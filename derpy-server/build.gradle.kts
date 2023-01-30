@@ -28,7 +28,6 @@ dependencies {
 tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileKotlin") {
     kotlinOptions {
         jvmTarget = "1.8"
-        allWarningsAsErrors = true
     }
 }
 

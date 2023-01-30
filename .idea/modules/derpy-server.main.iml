@@ -3,6 +3,7 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$/../../derpy-server/src/main">
       <sourceFolder url="file://$MODULE_DIR$/../../derpy-server/src/main/kotlin" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../derpy-server/src/main/resources" type="java-resource" />
     </content>
   </component>
 </module>
