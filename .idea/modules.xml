@@ -3,7 +3,6 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/DerpyCloud.iml" filepath="$PROJECT_DIR$/DerpyCloud.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/derpy-server.main.iml" filepath="$PROJECT_DIR$/.idea/modules/derpy-server.main.iml" />
     </modules>
   </component>
 </project>
