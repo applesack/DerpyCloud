@@ -1,6 +1,6 @@
 package xyz.scootaloo.server.context
 
-import xyz.scootaloo.server.service.lock.DavLock
+import xyz.scootaloo.server.service.lock.LockSystem
 
 /**
  * @author AppleSack
@@ -8,6 +8,6 @@ import xyz.scootaloo.server.service.lock.DavLock
  */
 class UserSpace(
     val storageSpace: StorageSpace,
-    val lock: DavLock
+    val lock: LockSystem
 ) {
 }
