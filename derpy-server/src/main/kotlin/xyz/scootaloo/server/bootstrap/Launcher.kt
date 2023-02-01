@@ -1,6 +1,7 @@
 package xyz.scootaloo.server.bootstrap
 
 import io.vertx.core.Vertx
+import xyz.scootaloo.server.context.AppConfig
 
 /**
  * @author AppleSack

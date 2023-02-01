@@ -10,8 +10,7 @@ import kotlinx.coroutines.CoroutineScope
  */
 object Routers {
 
-    fun doRoute(vertx: Vertx, coroutine: CoroutineScope): Router {
-        return Router.router(vertx)
+    fun setup(coroutine: CoroutineScope, vertx: Vertx, root: Router) {
     }
 
 }

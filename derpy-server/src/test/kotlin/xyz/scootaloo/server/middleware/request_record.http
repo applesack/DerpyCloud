@@ -1,0 +1,6 @@
+GET http://localhost:8080/test/hello
+
+
+###
+
+PUT http://localhost:8080/test/hello

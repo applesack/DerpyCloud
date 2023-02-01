@@ -7,7 +7,7 @@ import io.vertx.ext.web.RoutingContext
  * @author AppleSack
  * @since 2023/01/31
  */
-object CorsHandler : Handler<RoutingContext> {
+object DigestAuthHandler : Handler<RoutingContext> {
     override fun handle(event: RoutingContext) {
     }
 }
