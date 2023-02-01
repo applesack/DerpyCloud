@@ -41,7 +41,7 @@ class BigFileUploadTest2 : CoroutineVerticle() {
 
     private fun router(): Router {
         return Router.router(vertx).apply {
-            // 要执行上传的路径上不得添加 body handler, 否则导致预先内存分配, 进而导致内存移除
+            // 要执行上传的路径上不得添加 body handler, 否则导致预先内存分配, 进而导致内存溢出
 //            route().handler(BodyHandler.create()
 //                .setHandleFileUploads(true)
 //                .setBodyLimit(-1))
