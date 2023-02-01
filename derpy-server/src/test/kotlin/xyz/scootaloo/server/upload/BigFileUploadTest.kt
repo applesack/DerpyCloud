@@ -4,7 +4,6 @@ import io.vertx.core.Future
 import io.vertx.core.Vertx
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
-import io.vertx.ext.web.handler.BodyHandler
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
@@ -12,7 +11,7 @@ import java.io.File
 
 /**
  * @author AppleSack
- * @since 2023/01/31
+ * @since  2023/01/31
  */
 class BigFileUploadTest {
 
@@ -21,78 +20,46 @@ class BigFileUploadTest {
         val vertx = Vertx.vertx()
         val server = vertx.createHttpServer()
         server.requestHandler(router(vertx))
-        server.invalidRequestHandler {
-            it.end()
-        }
         server.exceptionHandler {
             it.printStackTrace()
         }
-        server.listen(8080).onSuccess {
-            println("server ok")
+        server.listen(8080).onComplete { done ->
+            println(done)
         }
         delay(1000 * 60 * 30)
     }
 
     private fun router(vertx: Vertx): Router {
         return Router.router(vertx).apply {
-            // 注册 body handler 后, request.handler 不可用
-            put("/*").handler {
-                handleFile(it)
-            }
+            put("/*").handler(::saveFile)
         }
     }
 
-    private fun handleFile(ctx: RoutingContext) {
-        val uploadDir = desktopUploadDir()
-        val fs = ctx.vertx().fileSystem()
-        fs.exists(uploadDir)
-            .compose { exists ->
-                if (exists) {
-                    Future.succeededFuture()
-                } else {
-                    fs.mkdirs(uploadDir)
-                }
-            }.compose {
-                val destFile = uploadDest(uploadDir, ctx.pathParam("*"))
-                fs.createFile(destFile).transform { done ->
-                    if (done.succeeded()) Future.succeededFuture(destFile)
-                    else Future.failedFuture(done.cause())
-                }
-            }.onComplete { done ->
-                if (done.failed()) {
-                    ctx.response().statusCode = 500
-                    ctx.end()
-                    return@onComplete
-                }
-
-                handleLargeFile(ctx, done.result())
-            }
+    private fun saveFile(ctx: RoutingContext) {
+        ctx.request().isExpectMultipart = true
+        ctx.request().uploadHandler {
+            println()
+        }
+//        ctx.request().body().compose { buff ->
+//            val desktopDir = desktopDir("derpy")
+//            val fs = ctx.vertx().fileSystem()
+//            fs.exists(desktopDir).compose { exists ->
+//                if (exists) {
+//                    Future.succeededFuture<Unit>()
+//                } else {
+//                    fs.mkdir(desktopDir)
+//                }
+//            }.compose {
+//                val newFileDest = desktopDir + File.pathSeparator + ctx.pathParam("*")
+//                fs.writeFile(newFileDest, buff)
+//            }.onComplete {
+//                println(it)
+//            }
+//        }
     }
 
-    private fun handleLargeFile(ctx: RoutingContext, destFile: String) {
-        val fs = ctx.vertx().fileSystem()
-        ctx.request().handler {
-            println("receive chunk " + it.length())
-            fs.writeFile(destFile, it)
-        }
-    }
-
-    private fun desktopUploadDir(): String {
-        return buildString {
-            append(System.clearProperty("user.home"))
-            append(File.separator)
-            append("Desktop")
-            append(File.separator)
-            append("derpy")
-        }
-    }
-
-    private fun uploadDest(prefix: String, filename: String): String {
-        return buildString {
-            append(prefix)
-            append(File.pathSeparator)
-            append(filename)
-        }
+    private fun desktopDir(dir: String): String {
+        return System.getProperty("user.home") + File.pathSeparator + "Desktop" + File.pathSeparator + dir
     }
 
 }
