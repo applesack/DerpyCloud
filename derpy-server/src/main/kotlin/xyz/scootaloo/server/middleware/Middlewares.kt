@@ -15,7 +15,8 @@ object Middlewares {
     lateinit var vertx: Vertx
 
     fun setup(coroutine: CoroutineScope, vertx: Vertx, root: Router) {
-
+        this.vertx = vertx
+        this.coroutine = coroutine
     }
 
 }

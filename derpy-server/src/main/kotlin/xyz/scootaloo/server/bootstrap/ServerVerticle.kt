@@ -18,7 +18,10 @@ object ServerVerticle : CoroutineVerticle() {
         val server = vertx.createHttpServer()
         val rootRouter = Router.router(vertx)
         Middlewares.setup(this, vertx, rootRouter)
-        Routers.setup(this, vertx, rootRouter)
+        Routers.setup(rootRouter)
+        server.exceptionHandler {
+            log.error("路由错误", it)
+        }
         server.requestHandler(rootRouter)
         server.listen(8080)
         log.info("服务启动")

@@ -1,8 +1,7 @@
 package xyz.scootaloo.server.router
 
-import io.vertx.core.Vertx
 import io.vertx.ext.web.Router
-import kotlinx.coroutines.CoroutineScope
+import xyz.scootaloo.server.router.controller.Controllers
 
 /**
  * @author AppleSack
@@ -10,7 +9,10 @@ import kotlinx.coroutines.CoroutineScope
  */
 object Routers {
 
-    fun setup(coroutine: CoroutineScope, vertx: Vertx, root: Router) {
+    fun setup(root: Router): Router {
+        WebDAVRouters.mount(root)
+        Controllers.mount(root)
+        return root
     }
 
 }
