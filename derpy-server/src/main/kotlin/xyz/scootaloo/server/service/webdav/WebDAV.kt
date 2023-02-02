@@ -7,8 +7,10 @@ import io.vertx.kotlin.coroutines.await
 import kotlinx.coroutines.launch
 import xyz.scootaloo.server.context.Contexts
 import xyz.scootaloo.server.middleware.Middlewares
+import xyz.scootaloo.server.service.file.FileInfo
 import xyz.scootaloo.server.service.file.UFiles
 import java.io.File
+import javax.naming.Name
 
 /**
  * @author AppleSack
@@ -47,7 +49,17 @@ object WebDAV {
             return HttpResponseStatus.BAD_REQUEST
         }
 
+        val walkFun = fun (filename: String, info: FileInfo): Error {
+            if (pf.propName) {
+                val pNames =
+            }
+        }
+
         TODO()
+    }
+
+    private fun propNames(fi: FileInfo): XName {
+        val deedProps =
     }
 
     private const val infiniteDepth = -1

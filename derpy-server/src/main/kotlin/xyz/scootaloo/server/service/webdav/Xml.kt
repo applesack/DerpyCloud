@@ -30,7 +30,7 @@ object Xml {
                     if (prop !is Element) {
                         continue
                     }
-                    pf.props.add(Name(prop.namespacePrefix, prop.name))
+                    pf.props.add(XName(prop.namespacePrefix, prop.name))
                 }
 
                 "propname" -> pf.propName = true
@@ -40,7 +40,7 @@ object Xml {
                         if (prop !is Element) {
                             continue
                         }
-                        pf.include.add(Name(prop.namespacePrefix, prop.name))
+                        pf.include.add(XName(prop.namespacePrefix, prop.name))
                     }
                 }
             }

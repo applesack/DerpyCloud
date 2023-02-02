@@ -10,6 +10,7 @@ import kotlin.collections.HashMap
 
 enum class Errors(val msg: String) {
     None("webdav: ok"),
+    SkipDir("webdav: skip dir"),
     ConfirmationFailed("webdav: confirmation failed"),
     Forbidden("webdav: forbidden"),
     Locked("webdav: locked"),
