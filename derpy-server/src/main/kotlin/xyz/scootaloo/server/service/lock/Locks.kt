@@ -37,8 +37,8 @@ object Locks {
     ) : LockSystem {
 
         override fun confirm(
-            names: List<String>, conditions: List<Condition>
-        ): Pair<LockSystem.LockRelease, Errors> {
+            conditions: List<Condition>, name0: String, name1: String
+        ): Pair<() -> Unit, Errors> {
             TODO()
         }
 
@@ -54,20 +54,6 @@ object Locks {
             TODO("Not yet implemented")
         }
 
-    }
-
-    private class MemLockRelease(
-        private val lockSystem: MemLockSystem,
-        private val nodes: List<MemLSNode>
-    ) : LockSystem.LockRelease {
-        override fun release() {
-            TODO()
-        }
-    }
-
-    private object FakeMemLockRelease : LockSystem.LockRelease {
-        override fun release() {
-        }
     }
 
     private class MemLSNode(
