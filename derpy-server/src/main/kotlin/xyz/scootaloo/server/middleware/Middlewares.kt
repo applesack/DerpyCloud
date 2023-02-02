@@ -17,6 +17,12 @@ object Middlewares {
     fun setup(coroutine: CoroutineScope, vertx: Vertx, root: Router) {
         this.vertx = vertx
         this.coroutine = coroutine
+
+        root.route().handler(ResponseRecordHandler)
+        root.route().handler(CorsHandler)
+        root.route().handler(DigestAuthHandler)
+        root.route().handler(JwtAuthHandler)
+        root.route().handler(UserContextHandler)
     }
 
 }

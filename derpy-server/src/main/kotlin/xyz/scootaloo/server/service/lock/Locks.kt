@@ -1,6 +1,7 @@
 package xyz.scootaloo.server.service.lock
 
 import java.util.*
+import kotlin.collections.HashMap
 
 /**
  * @author AppleSack
@@ -29,7 +30,11 @@ class LockDetails(
 )
 
 object Locks {
-
+    fun create(): LockSystem {
+        return MemLockSystem(
+            HashMap(), HashMap(), 1, TreeMap()
+        )
+    }
 }
 
 private class MemLockSystem(

@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory
  */
 object ResponseRecordHandler : Handler<RoutingContext> {
 
-    private const val RESP_RECORD_MARK = "resp:record"
+    private const val RESP_RECORD_MARK = "resp.record"
 
     private val log = LoggerFactory.getLogger("http.recorder")
 

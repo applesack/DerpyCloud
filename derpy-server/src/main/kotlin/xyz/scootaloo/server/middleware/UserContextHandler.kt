@@ -5,10 +5,12 @@ import io.vertx.ext.web.RoutingContext
 
 /**
  * @author AppleSack
- * @since 2023/01/31
+ * @since  2023/02/02
  */
-object DigestAuthHandler : Handler<RoutingContext> {
+object UserContextHandler : Handler<RoutingContext> {
+
     override fun handle(event: RoutingContext) {
         event.next()
     }
+
 }

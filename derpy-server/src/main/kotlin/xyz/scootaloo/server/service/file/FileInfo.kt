@@ -10,4 +10,8 @@ class FileInfo(
     val path: String,
     val modTime: Long,
     val isDir: Boolean
-)
+) {
+    companion object {
+        val NONE = FileInfo(0, "", "", 0, false)
+    }
+}

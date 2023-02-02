@@ -22,6 +22,8 @@ dependencies {
     implementation("ch.qos.logback:logback-core:1.2.11")
     implementation("ch.qos.logback:logback-classic:1.2.11")
 
+    implementation("dom4j:dom4j:1.6.1")
+
     testImplementation(kotlin("test"))
 }
 

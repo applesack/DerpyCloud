@@ -2,6 +2,7 @@ package xyz.scootaloo.server.service.webdav
 
 import io.vertx.core.http.impl.MimeMapping
 import io.vertx.ext.web.impl.Utils
+import org.dom4j.Element
 import xyz.scootaloo.server.service.file.FileInfo
 import xyz.scootaloo.server.service.file.UPaths
 import xyz.scootaloo.server.service.lock.LockSystem
@@ -10,11 +11,23 @@ import xyz.scootaloo.server.service.lock.LockSystem
  * @author AppleSack
  * @since  2023/02/01
  */
-class PropPatch(
+data class PropFind(
+    var allProp: Boolean = false,
+    var propName: Boolean = false,
+    val props: MutableList<Name> = ArrayList(),
+    val include: MutableList<Name> = ArrayList()
+)
+
+internal class PropPatch(
     val remove: Boolean
 )
 
-object Props {
+data class Name(
+    val space: String,
+    val local: String
+)
+
+object PropFindRender {
 
     fun patch(ls: LockSystem) {
 

@@ -9,5 +9,6 @@ import io.vertx.ext.web.RoutingContext
  */
 object CorsHandler : Handler<RoutingContext> {
     override fun handle(event: RoutingContext) {
+        event.next()
     }
 }
