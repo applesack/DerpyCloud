@@ -15,14 +15,6 @@ import xyz.scootaloo.server.service.lock.Errors
  */
 object UFiles {
 
-    fun slashClean(name: String): String {
-        var out = name
-        if (out == "" || out[0] == '/') {
-            out = "/$out"
-        }
-        return UPaths.clean(out)
-    }
-
     /**
      * 检查一个路径是否存在, 如果存在, 返回文件描述, 否则返回空
      */

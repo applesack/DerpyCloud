@@ -1,14 +1,16 @@
 package xyz.scootaloo.server.service.webdav
 
+import io.netty.handler.codec.http.HttpResponseStatus
+import io.vertx.core.http.HttpServerResponse
 import io.vertx.core.http.impl.MimeMapping
+import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.impl.Utils
+import org.dom4j.DocumentHelper
 import xyz.scootaloo.server.service.file.FileInfo
 import xyz.scootaloo.server.service.file.UPaths
-import xyz.scootaloo.server.service.lock.LockSystem
+import java.beans.XMLEncoder
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.collections.ArrayList
-import kotlin.collections.HashMap
 
 /**
  * @author AppleSack
@@ -28,24 +30,82 @@ internal class PropPatch(
 data class XName(
     val space: String,
     val local: String
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as XName
+
+        if (local != other.local) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return local.hashCode()
+    }
+}
+
+data class PropStat(
+    val props: MutableList<Property> = ArrayList(),
+    var status: HttpResponseStatus = HttpResponseStatus.OK,
+    var xmlError: String = "",
+    var responseDescription: String = ""
+)
+
+data class Property(
+    val name: XName,
+    val innerXML: String = "",
+    val lang: String = ""
+)
+
+data class MultiResponse(
+    val name: XName,
+    val href: List<String>,
+    val propStats: List<PropStat>,
+    val status: String,
+    val responseDescription: String
 )
 
 fun interface PropRender {
     fun render(fi: FileInfo): String
 }
 
-val liveProps: Map<XName, Pair<Boolean, PropRender>> by lazy {
-    val map = HashMap<XName, Pair<Boolean, PropRender>>()
-    map[XName("DAV:", "resourcetype")] = true to PropRender { findResourceType(it) }
-    map[XName("DAV:", "displayname")] = true to PropRender { findDisplayName(it) }
-    map[XName("DAV:", "getcontentlength")] = false to PropRender { it.size.toString() }
-    map[XName("DAV:", "getlastmodified")] = true to PropRender { findLastModified(it) }
-    map[XName("DAV:", "creationdate")] = false to PropRender { findCreationDate(it) }
-    map[XName("DAV:", "getcontenttype")] = false to PropRender { findContentType(it) }
-    map[XName("DAV:", "getetag")] = false to PropRender { findETag(it) }
-    map[XName("DAV:", "lockdiscovery")]
-    // todo
-    map
+object Props {
+
+    val liveProps: Map<XName, Pair<Boolean, PropRender>> by lazy {
+        val map = HashMap<XName, Pair<Boolean, PropRender>>()
+        map[XName("DAV:", "resourcetype")] = true to PropRender { findResourceType(it) }
+        map[XName("DAV:", "displayname")] = true to PropRender { findDisplayName(it) }
+        map[XName("DAV:", "getcontentlength")] = false to PropRender { it.size.toString() }
+        map[XName("DAV:", "getlastmodified")] = true to PropRender { findLastModified(it) }
+        map[XName("DAV:", "creationdate")] = false to PropRender { findCreationDate(it) }
+        map[XName("DAV:", "getcontenttype")] = false to PropRender { findContentType(it) }
+        map[XName("DAV:", "getetag")] = false to PropRender { findETag(it) }
+        map[XName("DAV:", "lockdiscovery")] = true to PropRender { findSupportedLock() }
+        map
+    }
+
+    val livePropNames: List<XName> by lazy {
+        val value = ArrayList<XName>(liveProps.size)
+        for ((xn, _) in liveProps) {
+            value.add(xn)
+        }
+        value
+    }
+
+    fun writeMulti(ctx: RoutingContext, resp: MultiResponse) {
+        val writer = ctx.response()
+        writer.putHeader("Content-Type", "text/xml; charset=utf-8")
+        writer.statusCode = HttpResponseStatus.MULTI_STATUS.code()
+    }
+
+    private fun buildMultiXmlDoc(resp: MultiResponse): String {
+        val doc = DocumentHelper.createDocument()
+        doc.
+    }
+
 }
 
 private fun findEmpty(fi: FileInfo): String {

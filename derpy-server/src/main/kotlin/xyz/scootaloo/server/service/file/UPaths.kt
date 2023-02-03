@@ -12,6 +12,14 @@ import kotlin.io.path.absolutePathString
  */
 object UPaths {
 
+    fun slashClean(name: String): String {
+        var out = name
+        if (out == "" || out[0] == '/') {
+            out = "/$out"
+        }
+        return UPaths.clean(out)
+    }
+
     fun clean(path: String): String {
         // todo 归一化, 去除路径上的 ./和../
         return path
