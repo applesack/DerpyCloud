@@ -7,7 +7,7 @@ import org.dom4j.Element
  * @author AppleSack
  * @since  2023/02/02
  */
-object Xml {
+object XmlParser {
 
     fun readPropfind(text: String): Pair<Boolean, PropFind> {
         val pf = PropFind()

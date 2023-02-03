@@ -2,6 +2,7 @@ package xyz.scootaloo.server.service.file
 
 import xyz.scootaloo.server.context.AppConfig
 import xyz.scootaloo.server.context.StorageSpace
+import xyz.scootaloo.server.service.webdav.WebDAV
 import java.net.URLEncoder
 import java.nio.file.Paths
 import kotlin.io.path.absolutePathString
@@ -27,6 +28,10 @@ object UPaths {
 
     fun realPath(storage: StorageSpace, path: String): String {
         return Paths.get(storage.realPrefixString, path).absolutePathString()
+    }
+
+    fun href(path: String): String {
+        return WebDAV.prefix + path
     }
 
     fun encodeUri(path: String): String {

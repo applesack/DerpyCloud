@@ -10,6 +10,7 @@ import xyz.scootaloo.server.middleware.Middlewares
 import xyz.scootaloo.server.service.file.FileInfo
 import xyz.scootaloo.server.service.file.UFiles
 import xyz.scootaloo.server.service.file.UPaths
+import xyz.scootaloo.server.service.lock.Errors
 import java.io.File
 import java.util.Collections
 
@@ -18,6 +19,8 @@ import java.util.Collections
  * @since  2023/02/01
  */
 object WebDAV {
+
+    const val prefix = "/dav"
 
     fun put(ctx: RoutingContext) {
         Middlewares.coroutine.launch {
@@ -45,12 +48,13 @@ object WebDAV {
         if (depthHeader == null || depthHeader.isEmpty()) {
             depth = parseDepth(depthHeader)
         }
-        val (success, pf) = Xml.readPropfind(ctx.body().asString())
+        val (success, pf) = XmlParser.readPropfind(ctx.body().asString())
         if (!success) {
             return HttpResponseStatus.BAD_REQUEST
         }
 
-        val walkFun = fun(filename: String, info: FileInfo): Error {
+        val render = MultiStatusRender()
+        val walkFun = fun(_: String, info: FileInfo): Errors {
             var pStats: MutableList<PropStat> = ArrayList()
             if (pf.propName) {
                 val pStat = PropStat()
@@ -63,13 +67,24 @@ object WebDAV {
             } else {
                 pStats = props(info, pf.props)
             }
-            var href = UPaths.encodeUri(info.path)
+            var href = info.path
             if (href != "/" && info.isDir) {
                href += "/"
             }
+
+            render.addResp(makePropStatResponse(href, pStats))
+            return Errors.None
         }
 
-        TODO()
+        val fs = Contexts.vertx.fileSystem()
+        val walkErr = UFiles.walkFS(storage, fs, fi, depth, reqPath, walkFun)
+        if (walkErr != Errors.None) {
+            return HttpResponseStatus.INTERNAL_SERVER_ERROR
+        }
+        ctx.response().putHeader("Content-Type", "text/xml; charset=utf-8")
+        ctx.response().statusCode = HttpResponseStatus.MULTI_STATUS.code()
+        ctx.end(render.buildXML())
+        return HttpResponseStatus.OK
     }
 
     private fun allProp(fi: FileInfo, include: List<XName>): MutableList<PropStat> {
@@ -128,7 +143,7 @@ object WebDAV {
     }
 
     private fun makePropStatResponse(href: String, pStats: List<PropStat>): MultiResponse {
-        TODO()
+        return MultiResponse(href, pStats)
     }
 
     private const val infiniteDepth = -1

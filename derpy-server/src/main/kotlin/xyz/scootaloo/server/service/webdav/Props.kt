@@ -1,14 +1,14 @@
 package xyz.scootaloo.server.service.webdav
 
 import io.netty.handler.codec.http.HttpResponseStatus
-import io.vertx.core.http.HttpServerResponse
 import io.vertx.core.http.impl.MimeMapping
-import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.impl.Utils
+import org.dom4j.Document
 import org.dom4j.DocumentHelper
+import org.dom4j.Namespace
+import org.dom4j.QName
 import xyz.scootaloo.server.service.file.FileInfo
 import xyz.scootaloo.server.service.file.UPaths
-import java.beans.XMLEncoder
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -61,11 +61,9 @@ data class Property(
 )
 
 data class MultiResponse(
-    val name: XName,
-    val href: List<String>,
+    val href: String,
     val propStats: List<PropStat>,
-    val status: String,
-    val responseDescription: String
+//    val status: HttpResponseStatus
 )
 
 fun interface PropRender {
@@ -74,6 +72,7 @@ fun interface PropRender {
 
 object Props {
 
+    // key: dir, value: render
     val liveProps: Map<XName, Pair<Boolean, PropRender>> by lazy {
         val map = HashMap<XName, Pair<Boolean, PropRender>>()
         map[XName("DAV:", "resourcetype")] = true to PropRender { findResourceType(it) }
@@ -95,21 +94,48 @@ object Props {
         value
     }
 
-    fun writeMulti(ctx: RoutingContext, resp: MultiResponse) {
-        val writer = ctx.response()
-        writer.putHeader("Content-Type", "text/xml; charset=utf-8")
-        writer.statusCode = HttpResponseStatus.MULTI_STATUS.code()
-    }
-
-    private fun buildMultiXmlDoc(resp: MultiResponse): String {
-        val doc = DocumentHelper.createDocument()
-        doc.
-    }
-
 }
 
-private fun findEmpty(fi: FileInfo): String {
-    return ""
+class MultiStatusRender(private val document: Document = DocumentHelper.createDocument()) {
+    private val namespace = Namespace("D", "DAV:")
+    private val root get() = document.rootElement
+
+    init {
+        document.addElement(qname("multistatus", namespace))
+    }
+
+    fun addResp(resp: MultiResponse) {
+        val respLabel = root.addElement(qname("response", namespace))
+        val hrefLabel = respLabel.addElement(qname("href", namespace))
+        hrefLabel.addText(UPaths.href(UPaths.encodeUri(resp.href)))
+        for (propStat in resp.propStats) {
+            val propStatLabel = respLabel.addElement(qname("propstat", namespace))
+            val propLabel = propStatLabel.addElement(qname("prop", namespace))
+            for (prop in propStat.props) {
+                val localLabel = propLabel.addElement(qname(prop.name.local, namespace))
+                if (prop.innerXML.isNotEmpty()) {
+                    localLabel.addText(prop.innerXML)
+                }
+            }
+            val statusLabel = propStatLabel.addElement(qname("status", namespace))
+            val statusContent = String.format(
+                "HTTP/1.1 %d %s", propStat.status.code(), propStat.status.reasonPhrase()
+            )
+            statusLabel.addText(statusContent)
+            if (propStat.responseDescription.isNotEmpty()) {
+                val respDescLabel = propStatLabel.addElement(qname("responsedescription", namespace))
+                respDescLabel.addText(propStat.responseDescription)
+            }
+        }
+    }
+
+    fun buildXML(): String {
+        return document.asXML()
+    }
+
+    private fun qname(name: String, ns: Namespace): QName {
+        return QName(name, ns)
+    }
 }
 
 private fun findResourceType(fi: FileInfo): String {

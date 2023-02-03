@@ -11,10 +11,8 @@ import xyz.scootaloo.server.service.webdav.WebDAV
  */
 object WebDAVRouters {
 
-    private const val DAV_PREFIX = "/dav*"
-
     fun mount(superior: Router) {
-        superior.route(DAV_PREFIX).subRouter(davRouter())
+        superior.route(WebDAV.prefix + "*").subRouter(davRouter())
     }
 
     private fun davRouter(): Router {
