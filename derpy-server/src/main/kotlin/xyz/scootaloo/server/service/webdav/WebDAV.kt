@@ -9,10 +9,8 @@ import xyz.scootaloo.server.context.Contexts
 import xyz.scootaloo.server.middleware.Middlewares
 import xyz.scootaloo.server.service.file.FileInfo
 import xyz.scootaloo.server.service.file.UFiles
-import xyz.scootaloo.server.service.file.UPaths
 import xyz.scootaloo.server.service.lock.Errors
 import java.io.File
-import java.util.Collections
 
 /**
  * @author AppleSack
@@ -21,6 +19,31 @@ import java.util.Collections
 object WebDAV {
 
     const val prefix = "/dav"
+
+    private const val defOptionsAllow = "OPTIONS, LOCK, PUT, MKCOL"
+    private const val fileOptionsAllow = "OPTIONS, LOCK, GET, HEAD, POST, DELETE, PROPPATCH," +
+            " COPY, MOVE, UNLOCK, PROPFIND, PUT"
+    private const val dirOptionsAllow = "OPTIONS, LOCK, DELETE, PROPPATCH, COPY, MOVE, UNLOCK, PROPFIND"
+
+    suspend fun options(ctx: RoutingContext): HttpResponseStatus {
+        val reqPath = ctx.pathParam("*")
+        val storage = Contexts.getStorage(ctx)
+        val (exists, fi) = UFiles.isPathExists(storage, reqPath)
+        var allow = defOptionsAllow
+        if (exists) {
+            allow = if (fi.isDir) {
+                dirOptionsAllow
+            } else {
+                fileOptionsAllow
+            }
+        }
+        val respHeader = ctx.response().headers()
+        respHeader.add("Allow", allow)
+        respHeader.add("DAV", "1, 2")
+        respHeader.add("MS-Author-Via", "DAV")
+        ctx.end()
+        return HttpResponseStatus.OK
+    }
 
     fun put(ctx: RoutingContext) {
         Middlewares.coroutine.launch {
@@ -41,7 +64,7 @@ object WebDAV {
         val storage = Contexts.getStorage(ctx)
         val (exists, fi) = UFiles.isPathExists(storage, reqPath)
         if (!exists) {
-            return HttpResponseStatus.NOT_FOUND;
+            return HttpResponseStatus.NOT_FOUND
         }
         var depth = infiniteDepth
         val depthHeader = ctx.request().getHeader("Depth")

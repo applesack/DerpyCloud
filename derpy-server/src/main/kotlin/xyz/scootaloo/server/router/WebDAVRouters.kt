@@ -3,6 +3,8 @@ package xyz.scootaloo.server.router
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.http.HttpMethod
 import io.vertx.ext.web.Router
+import io.vertx.ext.web.RoutingContext
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.slf4j.LoggerFactory
 import xyz.scootaloo.server.middleware.Middlewares
@@ -33,7 +35,7 @@ object WebDAVRouters {
         }
 
         router.route(HttpMethod.OPTIONS, "/*").handler {
-
+            it.coroutineHandleFail { WebDAV.options(it) }
         }
 
         router.route(HttpMethod.GET, "/*").handler {
@@ -41,17 +43,7 @@ object WebDAVRouters {
         }
 
         router.route(HttpMethod.PROPFIND, "/*").handler {
-            Middlewares.coroutine.launch {
-                val result = runCatching { WebDAV.propfind(it) }
-                if (result.isFailure) {
-                    it.fail(HttpResponseStatus.INTERNAL_SERVER_ERROR.code(), result.exceptionOrNull())
-                } else {
-                    val statusCode = result.getOrThrow()
-                    if (statusCode.code() >= 300) {
-                        it.fail(statusCode.code())
-                    }
-                }
-            }
+            it.coroutineHandleFail { WebDAV.propfind(it) }
         }
 
         router.route(HttpMethod.PROPPATCH, "/*").handler {
@@ -82,9 +74,26 @@ object WebDAVRouters {
 
         }
 
-
-
         return router
+    }
+
+    private val serverInternalError = HttpResponseStatus.INTERNAL_SERVER_ERROR
+
+    private fun RoutingContext.coroutineHandleFail(
+        block: suspend CoroutineScope.() -> HttpResponseStatus
+    ) {
+        val ctx = this
+        Middlewares.coroutine.launch {
+            val result = runCatching { block() }
+            if (result.isFailure) {
+                return@launch ctx.fail(serverInternalError.code())
+            }
+
+            val rCode = result.getOrThrow().code()
+            if (rCode >= 300) {
+                ctx.fail(rCode)
+            }
+        }
     }
 
 }
