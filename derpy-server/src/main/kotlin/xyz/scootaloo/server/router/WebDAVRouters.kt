@@ -38,10 +38,6 @@ object WebDAVRouters {
             it.coroutineHandleFail { WebDAV.options(it) }
         }
 
-        router.route(HttpMethod.GET, "/*").handler {
-
-        }
-
         router.route(HttpMethod.PROPFIND, "/*").handler {
             it.coroutineHandleFail { WebDAV.propfind(it) }
         }
@@ -72,6 +68,10 @@ object WebDAVRouters {
 
         router.route(HttpMethod.UNLOCK, "/*").handler {
 
+        }
+
+        router.route(HttpMethod.GET, "/*").handler {
+            WebDAV.get(it)
         }
 
         return router

@@ -45,6 +45,11 @@ object WebDAV {
         return HttpResponseStatus.OK
     }
 
+    fun get(ctx: RoutingContext) {
+        val storage = Contexts.getStorage(ctx)
+        storage.staticResources.handle(ctx)
+    }
+
     fun put(ctx: RoutingContext) {
         Middlewares.coroutine.launch {
             val fs = Middlewares.vertx.fileSystem()
