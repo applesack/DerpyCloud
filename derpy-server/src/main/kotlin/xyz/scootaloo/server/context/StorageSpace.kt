@@ -1,6 +1,7 @@
 package xyz.scootaloo.server.context
 
 import java.nio.file.Paths
+import kotlin.io.path.absolute
 import kotlin.io.path.absolutePathString
 
 /**
@@ -10,5 +11,6 @@ import kotlin.io.path.absolutePathString
 class StorageSpace(
     val prefix: String
 ) {
-    val realPrefixString by lazy { Paths.get(AppConfig.realPathString, prefix).absolutePathString() }
+    val realPrefixPath by lazy { Paths.get(AppConfig.realPathString, prefix).absolute() }
+    val realPrefixString by lazy { realPrefixPath.absolutePathString() }
 }

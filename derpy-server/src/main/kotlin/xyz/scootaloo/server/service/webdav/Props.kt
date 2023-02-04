@@ -5,6 +5,7 @@ import io.vertx.core.http.impl.MimeMapping
 import io.vertx.ext.web.impl.Utils
 import org.dom4j.Document
 import org.dom4j.DocumentHelper
+import org.dom4j.Element
 import org.dom4j.Namespace
 import org.dom4j.QName
 import xyz.scootaloo.server.service.file.FileInfo
@@ -56,18 +57,18 @@ data class PropStat(
 
 data class Property(
     val name: XName,
-    val innerXML: String = "",
+    val fi: FileInfo,
+    val render: PropRender,
     val lang: String = ""
 )
 
 data class MultiResponse(
     val href: String,
-    val propStats: List<PropStat>,
-//    val status: HttpResponseStatus
+    val propStats: List<PropStat>
 )
 
 fun interface PropRender {
-    fun render(fi: FileInfo): String
+    fun render(fi: FileInfo, root: Element)
 }
 
 object Props {
@@ -75,14 +76,14 @@ object Props {
     // key: dir, value: render
     val liveProps: Map<XName, Pair<Boolean, PropRender>> by lazy {
         val map = HashMap<XName, Pair<Boolean, PropRender>>()
-        map[XName("DAV:", "resourcetype")] = true to PropRender { findResourceType(it) }
-        map[XName("DAV:", "displayname")] = true to PropRender { findDisplayName(it) }
-        map[XName("DAV:", "getcontentlength")] = false to PropRender { it.size.toString() }
-        map[XName("DAV:", "getlastmodified")] = true to PropRender { findLastModified(it) }
-        map[XName("DAV:", "creationdate")] = false to PropRender { findCreationDate(it) }
-        map[XName("DAV:", "getcontenttype")] = false to PropRender { findContentType(it) }
-        map[XName("DAV:", "getetag")] = false to PropRender { findETag(it) }
-        map[XName("DAV:", "lockdiscovery")] = true to PropRender { findSupportedLock() }
+        map[XName("DAV:", "resourcetype")] = true to PropRender { f, r -> findResourceType(f, r) }
+        map[XName("DAV:", "displayname")] = true to PropRender { f, r -> findDisplayName(f, r) }
+        map[XName("DAV:", "getcontentlength")] = true to PropRender { f, r ->  findContentLength(f, r) }
+        map[XName("DAV:", "getlastmodified")] = true to PropRender { f, r -> findLastModified(f, r) }
+        map[XName("DAV:", "creationdate")] = true to PropRender { f, r -> findCreationDate(f, r) }
+        map[XName("DAV:", "getcontenttype")] = true to PropRender { f, r -> findContentType(f, r) }
+        map[XName("DAV:", "getetag")] = false to PropRender { f, r -> findETag(f, r) }
+//        map[XName("DAV:", "lockdiscovery")] = true to PropRender { _, r -> findSupportedLock(r) }
         map
     }
 
@@ -113,9 +114,7 @@ class MultiStatusRender(private val document: Document = DocumentHelper.createDo
             val propLabel = propStatLabel.addElement(qname("prop", namespace))
             for (prop in propStat.props) {
                 val localLabel = propLabel.addElement(qname(prop.name.local, namespace))
-                if (prop.innerXML.isNotEmpty()) {
-                    localLabel.addText(prop.innerXML)
-                }
+                prop.render.render(prop.fi, localLabel)
             }
             val statusLabel = propStatLabel.addElement(qname("status", namespace))
             val statusContent = String.format(
@@ -133,45 +132,57 @@ class MultiStatusRender(private val document: Document = DocumentHelper.createDo
         return document.asXML()
     }
 
-    private fun qname(name: String, ns: Namespace): QName {
-        return QName(name, ns)
-    }
+
 }
 
-private fun findResourceType(fi: FileInfo): String {
+private fun qname(name: String, ns: Namespace): QName {
+    return QName(name, ns)
+}
+
+private fun findResourceType(fi: FileInfo, root: Element) {
     if (fi.isDir) {
-        return """<D:collection xmlns:D="DAV:"/>"""
+        val ns = root.namespace
+        root.addElement(qname("collection", ns))
     }
-    return ""
 }
 
-private fun findDisplayName(fi: FileInfo): String {
-    // todo escapeXML
-    return UPaths.encodeUri(fi.path)
+private fun findContentLength(fi: FileInfo, root: Element) {
+    root.addText(fi.size.toString())
 }
 
-private fun findLastModified(fi: FileInfo): String {
-    return Utils.formatRFC1123DateTime(fi.modTime)
+private fun findDisplayName(fi: FileInfo, root: Element) {
+    root.addText(UPaths.encodeUri(fi.name))
+}
+
+private fun findLastModified(fi: FileInfo, root: Element) {
+    root.addText(Utils.formatRFC1123DateTime(fi.modTime))
 }
 
 private val rfc3339format by lazy { SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ") }
 
-private fun findCreationDate(fi: FileInfo): String {
-    return rfc3339format.format(Date(fi.creationDate))
+private fun findCreationDate(fi: FileInfo, root: Element) {
+    root.addText(rfc3339format.format(Date(fi.creationTime)))
 }
 
-private fun findContentType(fi: FileInfo): String {
-    return MimeMapping.getMimeTypeForFilename(fi.name) ?: MimeMapping.getMimeTypeForFilename("bin")
+private fun findContentType(fi: FileInfo, root: Element) {
+    if (fi.isDir) {
+        root.addText("httpd/unix-directory")
+    } else {
+        root.addText(
+            MimeMapping.getMimeTypeForFilename(fi.name) ?: MimeMapping.getMimeTypeForExtension("bin")
+        )
+    }
 }
 
-private fun findETag(fi: FileInfo): String {
-    return String.format("\"%x%x\"", fi.modTime, fi.size)
+private fun findETag(fi: FileInfo, root: Element) {
+    root.addText(String.format("\"%x%x\"", fi.modTime, fi.size))
 }
 
-private fun findSupportedLock(): String {
-    return "" +
-            "<D:lockentry xmlns:D=\"DAV:\">" +
-            "<D:lockscope><D:exclusive/></D:lockscope>" +
-            "<D:locktype><D:write/></D:locktype>" +
-            "</D:lockentry>"
+private fun findSupportedLock(root: Element) {
+    val ns = root.namespace
+    val lockEntry = root.addElement(qname("lockentry", ns))
+    val lockScope = lockEntry.addElement(qname("lockscope", ns))
+    lockScope.addElement(qname("exclusive", ns))
+    val lockType = lockEntry.addElement(qname("locktype", ns))
+    lockType.addElement(qname("write", ns))
 }

@@ -8,6 +8,8 @@ import io.vertx.kotlin.coroutines.await
 import xyz.scootaloo.server.context.Contexts
 import xyz.scootaloo.server.context.StorageSpace
 import xyz.scootaloo.server.service.lock.Errors
+import java.nio.file.Path
+import java.nio.file.Paths
 
 /**
  * @author AppleSack
@@ -94,7 +96,12 @@ object UFiles {
     }
 
     private fun buildFileInfo(storage: StorageSpace, realPath: String, props: FileProps): FileInfo {
-        TODO()
+        val path = UPaths.normalize(UPaths.relative(storage.realPrefixPath, Paths.get(realPath)))
+        val filename = UPaths.filenameOf(path)
+        return FileInfo(
+            props.size(), filename, path, props.lastModifiedTime(),
+            props.creationTime(), props.isDirectory
+        )
     }
 
 }

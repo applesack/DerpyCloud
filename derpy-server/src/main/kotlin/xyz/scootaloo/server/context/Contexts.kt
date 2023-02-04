@@ -12,7 +12,7 @@ object Contexts {
 
     lateinit var vertx: Vertx
 
-    const val USER_SPACE = "user.space"
+    private const val USER_SPACE = "user.space"
 
     const val USER_INFO = "user.info"
 
@@ -23,11 +23,20 @@ object Contexts {
     fun launchCrontab() {
     }
 
-    fun getUserSpace(ctx: RoutingContext): UserSpace {
+    fun setup(vertx: Vertx) {
+        this.vertx = vertx
+    }
+
+    fun getOrCreate(ctx: RoutingContext) {
+        val username = "a"
+        ctx.put(USER_SPACE, getOrCreateUserSpace(username))
+    }
+
+    private fun getUserSpace(ctx: RoutingContext): UserSpace {
         return ctx.get(USER_SPACE) as UserSpace
     }
 
-    fun getUserSpace(user: String): UserSpace {
+    fun getOrCreateUserSpace(user: String): UserSpace {
         return usMap[user] ?: createUserSpace(user)
     }
 

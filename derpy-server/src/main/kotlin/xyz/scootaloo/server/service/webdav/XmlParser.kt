@@ -11,6 +11,11 @@ object XmlParser {
 
     fun readPropfind(text: String): Pair<Boolean, PropFind> {
         val pf = PropFind()
+        if (text.isBlank()) {
+            pf.allProp = true
+            return true to pf
+        }
+
         val doc = runCatching { DocumentHelper.parseText(text) }
         if (doc.isFailure) {
             return false to pf

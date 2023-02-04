@@ -46,9 +46,9 @@ object WebDAV {
         var depth = infiniteDepth
         val depthHeader = ctx.request().getHeader("Depth")
         if (depthHeader == null || depthHeader.isEmpty()) {
-            depth = parseDepth(depthHeader)
+            depth = parseDepth(depthHeader ?: "1")
         }
-        val (success, pf) = XmlParser.readPropfind(ctx.body().asString())
+        val (success, pf) = XmlParser.readPropfind(ctx.body().asString() ?: "")
         if (!success) {
             return HttpResponseStatus.BAD_REQUEST
         }
@@ -59,17 +59,17 @@ object WebDAV {
             if (pf.propName) {
                 val pStat = PropStat()
                 for (name in propNames()) {
-                    pStat.props.add(Property(name))
+                    pStat.props.add(Property(name, info, { _, _ -> }))
                 }
                 pStats.add(pStat)
             } else if (pf.allProp) {
-               pStats = allProp(info, pf.props)
+                pStats = allProp(info, pf.props)
             } else {
                 pStats = props(info, pf.props)
             }
             var href = info.path
             if (href != "/" && info.isDir) {
-               href += "/"
+                href += "/"
             }
 
             render.addResp(makePropStatResponse(href, pStats))
@@ -110,13 +110,12 @@ object WebDAV {
             if (pName in Props.liveProps) {
                 val (dir, render) = Props.liveProps[pName]!!
                 if (dir || !fi.isDir) {
-                    val innerXML = render.render(fi)
-                    pStatOk.props.add(Property(pName, innerXML))
+                    pStatOk.props.add(Property(pName, fi, render))
                     process = true
                 }
             }
-            if (!process) {
-                pStatNotFount.props.add(Property(pName))
+            if (!process && pName !in Props.liveProps) {
+                pStatNotFount.props.add(Property(pName, fi, { _, _ -> }))
             }
         }
         return makePropStats(pStatOk, pStatNotFount)
@@ -137,8 +136,8 @@ object WebDAV {
     }
 
     private fun propNames(): MutableList<XName> {
-        val copy = ArrayList<XName>()
-        Collections.copy(copy, Props.livePropNames)
+        val copy = ArrayList<XName>(Props.livePropNames.size)
+        copy.addAll(Props.livePropNames)
         return copy
     }
 

@@ -9,7 +9,7 @@ class FileInfo(
     val name: String,       // 文件名, 不以/符号开头
     val path: String,       // 文件路径, 以/开头的相对路径, 且路径格式为unix
     val modTime: Long,      // 文件最后一次的修改时间
-    val creationDate: Long, // 文件被创建的时间
+    val creationTime: Long, // 文件被创建的时间
     val isDir: Boolean      // 该文件是否是目录
 ) {
     companion object {
