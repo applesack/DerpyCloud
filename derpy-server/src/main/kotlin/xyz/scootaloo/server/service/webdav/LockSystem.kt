@@ -1,4 +1,4 @@
-package xyz.scootaloo.server.service.lock
+package xyz.scootaloo.server.service.webdav
 
 /**
  * @author AppleSack

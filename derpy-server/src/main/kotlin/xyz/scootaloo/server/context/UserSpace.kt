@@ -1,6 +1,6 @@
 package xyz.scootaloo.server.context
 
-import xyz.scootaloo.server.service.lock.LockSystem
+import xyz.scootaloo.server.service.webdav.LockSystem
 
 /**
  * @author AppleSack

@@ -1,4 +1,4 @@
-package xyz.scootaloo.server.service.lock
+package xyz.scootaloo.server.service.webdav
 
 import java.util.*
 import kotlin.collections.HashMap
@@ -21,7 +21,11 @@ class Condition(
     val not: Boolean,
     val token: String,
     val etag: String
-)
+) {
+    companion object {
+        val NONE = Condition(false, "", "")
+    }
+}
 
 class LockDetails(
     val root: String,
@@ -30,6 +34,16 @@ class LockDetails(
     val zeroDepth: Boolean
 )
 
+class LockInfo(
+    val isShared: Boolean,
+    val isWrite: Boolean,
+    val owner: String
+) {
+    companion object {
+        val NONE = LockInfo(isShared = false, isWrite = false, owner = "")
+    }
+}
+
 object Locks {
     fun create(): LockSystem {
         return MemLockSystem(
@@ -37,6 +51,14 @@ object Locks {
         )
     }
 }
+
+private class MemLSNode(
+    val details: LockDetails,
+    val token: String,
+    var refCount: Int,
+    val duration: Long,
+    var held: Boolean
+)
 
 private class MemLockSystem(
     private val nameMap: Map<String, MemLSNode>,
@@ -65,10 +87,4 @@ private class MemLockSystem(
 
 }
 
-private class MemLSNode(
-    val details: LockDetails,
-    val token: String,
-    var refCount: Int,
-    val duration: Long,
-    var held: Boolean
-)
+

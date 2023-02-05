@@ -4,12 +4,13 @@ import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.ext.web.RoutingContext
 import io.vertx.kotlin.core.file.openOptionsOf
 import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.awaitBlocking
 import kotlinx.coroutines.launch
+import org.slf4j.LoggerFactory
 import xyz.scootaloo.server.context.Contexts
 import xyz.scootaloo.server.middleware.Middlewares
 import xyz.scootaloo.server.service.file.FileInfo
 import xyz.scootaloo.server.service.file.UFiles
-import xyz.scootaloo.server.service.lock.Errors
 import java.io.File
 
 /**
@@ -19,6 +20,8 @@ import java.io.File
 object WebDAV {
 
     const val prefix = "/dav"
+
+    private val log = LoggerFactory.getLogger("webdav")
 
     private const val defOptionsAllow = "OPTIONS, LOCK, PUT, MKCOL"
     private const val fileOptionsAllow = "OPTIONS, LOCK, GET, HEAD, POST, DELETE, PROPPATCH," +
@@ -43,6 +46,27 @@ object WebDAV {
         respHeader.add("MS-Author-Via", "DAV")
         ctx.end()
         return HttpResponseStatus.OK
+    }
+
+    fun lock(ctx: RoutingContext): HttpResponseStatus {
+        val timeoutHeader = ctx.request().getHeader("Timeout")
+        val (valid, duration) = parseTimeout(timeoutHeader ?: "")
+        if (!valid) {
+            log.warn("错误的参数lock.timeout: {}", timeoutHeader)
+            return HttpResponseStatus.BAD_REQUEST
+        }
+        val (code, lockInfo) = DAVParser.readLockInfo(ctx.body().asString() ?: "")
+        if (code != 0) {
+            return HttpResponseStatus.valueOf(code)
+        }
+
+        if (lockInfo == LockInfo.NONE) {
+            // 空的锁结构代表使用当前token刷新一个锁
+        } else {
+            // 创建锁
+        }
+
+        TODO()
     }
 
     fun get(ctx: RoutingContext) {
@@ -76,7 +100,7 @@ object WebDAV {
         if (depthHeader == null || depthHeader.isEmpty()) {
             depth = parseDepth(depthHeader ?: "1")
         }
-        val (success, pf) = XmlParser.readPropfind(ctx.body().asString() ?: "")
+        val (success, pf) = awaitBlocking { DAVParser.readPropfind(ctx.body().asString() ?: "") }
         if (!success) {
             return HttpResponseStatus.BAD_REQUEST
         }
@@ -182,6 +206,42 @@ object WebDAV {
             "1" -> infiniteDepth
             else -> invalidDepth
         }
+    }
+
+    private const val defTimeoutSeconds = 5
+    private const val maxTimeoutSeconds = 232 - 1
+    private const val infiniteTimeoutSeconds = -1
+
+    private fun parseTimeout(text: String): Pair<Boolean, Int> {
+        if (text.isBlank()) {
+            return true to defTimeoutSeconds
+        }
+        var timeoutStr = text
+        val i = timeoutStr.lastIndexOf(',')
+        if (i>=0) {
+            timeoutStr = timeoutStr.substring(0, i)
+        }
+        timeoutStr = timeoutStr.trim()
+        if (timeoutStr == "Infinite") {
+            return true to infiniteTimeoutSeconds
+        }
+        val prefix = "Second-"
+        if (!timeoutStr.startsWith(prefix)) {
+            return false to 0
+        }
+        val timeoutSuffix = timeoutStr.substring(prefix.length + 1)
+        if (timeoutSuffix == "" || timeoutSuffix[0] < '0' || timeoutSuffix[0] > '9') {
+            return false to 0
+        }
+        val intResult = runCatching { timeoutSuffix.toInt() }
+        if (intResult.isFailure) {
+            return false to 0
+        }
+        val timeout = intResult.getOrElse { defTimeoutSeconds }
+        if (timeout < 0 || timeout > maxTimeoutSeconds) {
+            return false to 0
+        }
+        return true to timeout
     }
 
 }

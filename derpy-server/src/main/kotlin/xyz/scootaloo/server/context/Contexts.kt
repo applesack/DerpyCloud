@@ -2,7 +2,7 @@ package xyz.scootaloo.server.context
 
 import io.vertx.core.Vertx
 import io.vertx.ext.web.RoutingContext
-import xyz.scootaloo.server.service.lock.Locks
+import xyz.scootaloo.server.service.webdav.Locks
 
 /**
  * @author AppleSack

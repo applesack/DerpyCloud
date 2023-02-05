@@ -3,12 +3,10 @@ package xyz.scootaloo.server.service.file
 import io.vertx.core.CompositeFuture
 import io.vertx.core.file.FileProps
 import io.vertx.core.file.FileSystem
-import io.vertx.kotlin.core.file.fileSystemOptionsOf
 import io.vertx.kotlin.coroutines.await
 import xyz.scootaloo.server.context.Contexts
 import xyz.scootaloo.server.context.StorageSpace
-import xyz.scootaloo.server.service.lock.Errors
-import java.nio.file.Path
+import xyz.scootaloo.server.service.webdav.Errors
 import java.nio.file.Paths
 
 /**
