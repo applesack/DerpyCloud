@@ -5,7 +5,7 @@ package xyz.scootaloo.server.service.webdav
  * @since 2023/02/05
  */
 
-class IfHeader(
+data class IfHeader(
     val lists: List<IfList>
 ) {
     companion object {
@@ -13,8 +13,8 @@ class IfHeader(
     }
 }
 
-class IfList(
-    val resourceTag: String,
+data class IfList(
+    var resourceTag: String,
     val conditions: List<Condition>
 ) {
     companion object {
@@ -22,29 +22,94 @@ class IfList(
     }
 }
 
+data class Condition(
+    val not: Boolean,
+    val token: String,
+    val etag: String
+) {
+    companion object {
+        val NONE = Condition(false, "", "")
+    }
+}
+
 fun parseIfHeader(s: String): Pair<Boolean, IfHeader> {
     val str = s.trim()
     val (tokenType, _, _) = lex(str)
     return when (tokenType) {
-        '('.code -> parseNotTagList()
-        ANGLE_TOKEN_TYPE -> parseTaggedList()
+        '('.code -> parseNotTagList(s)
+        ANGLE_TOKEN_TYPE -> parseTaggedList(s)
         else -> {
             false to IfHeader.NONE
         }
     }
 }
 
-private fun parseNotTagList(): Pair<Boolean, IfHeader> {
-    TODO()
+private fun parseNotTagList(s: String): Pair<Boolean, IfHeader> {
+    var str = s
+    val ifLists = ArrayList<IfList>(4)
+    while (true) {
+        val r = parseList(str)
+        if (!r.success) {
+            return false to IfHeader.NONE
+        }
+        ifLists.add(r.ifList)
+        if (r.remaining.isEmpty()) {
+            return true to IfHeader(ifLists)
+        }
+        str = r.remaining
+    }
 }
 
-private fun parseTaggedList(): Pair<Boolean, IfHeader> {
-    TODO()
+private fun parseTaggedList(s: String): Pair<Boolean, IfHeader> {
+    var resourceTag = ""
+    var n = 0
+    var first = true
+    var str = s
+    val ifLists = ArrayList<IfList>(4)
+    while (true) {
+        val triple = lex(str)
+        when (triple.tokenType) {
+            ANGLE_TOKEN_TYPE -> {
+                if (!first && n == 0) {
+                    return false to IfHeader.NONE
+                }
+                resourceTag = triple.tokenStr
+                n = 0
+                str = triple.remaining
+            }
+
+            '('.code -> {
+                n++
+                val r = parseList(str)
+                if (!r.success) {
+                    return false to IfHeader.NONE
+                }
+                ifLists.add(r.ifList)
+                r.ifList.resourceTag = resourceTag
+                if (r.remaining.isEmpty()) {
+                    return true to IfHeader(ifLists)
+                }
+                str = r.remaining
+            }
+
+            else -> {
+                return false to IfHeader.NONE
+            }
+        }
+        first = false
+    }
 }
+
+@get:JvmName("ifListSuccess")
+private val Triple<Boolean, IfList, String>.success get() = first
+private val Triple<Boolean, IfList, String>.ifList get() = second
+
+@get:JvmName("ifListRemaining")
+private val Triple<Boolean, IfList, String>.remaining get() = third
 
 private fun parseList(s: String): Triple<Boolean, IfList, String> {
     var triple = lex(s)
-    if (triple.tokenType == '('.code) {
+    if (triple.tokenType != '('.code) {
         return Triple(false, IfList.NONE, "")
     }
 
@@ -69,6 +134,8 @@ private fun parseList(s: String): Triple<Boolean, IfList, String> {
 
 private val Triple<Boolean, Condition, String>.success get() = first
 private val Triple<Boolean, Condition, String>.condition get() = second
+
+@get:JvmName("condRemaining")
 private val Triple<Boolean, Condition, String>.remaining get() = third
 
 private fun parseConditions(s: String): Triple<Boolean, Condition, String> {
@@ -84,9 +151,11 @@ private fun parseConditions(s: String): Triple<Boolean, Condition, String> {
         STR_TOKEN_TYPE, ANGLE_TOKEN_TYPE -> {
             token = tripe.tokenStr
         }
+
         SQUARE_TOKEN_TYPE -> {
             etag = tripe.tokenStr
         }
+
         else -> {
             return Triple(false, Condition.NONE, "")
         }

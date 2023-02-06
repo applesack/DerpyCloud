@@ -17,16 +17,6 @@ enum class Errors(val msg: String) {
     NoSuchLock("webdav: no such lock")
 }
 
-class Condition(
-    val not: Boolean,
-    val token: String,
-    val etag: String
-) {
-    companion object {
-        val NONE = Condition(false, "", "")
-    }
-}
-
 class LockDetails(
     val root: String,
     val ttl: Long,
