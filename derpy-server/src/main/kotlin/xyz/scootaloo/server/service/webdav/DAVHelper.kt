@@ -7,7 +7,7 @@ import org.dom4j.Element
  * @author AppleSack
  * @since  2023/02/02
  */
-object DAVParser {
+object DAVHelper {
 
     fun readPropfind(text: String): Pair<Boolean, PropFind> {
         val pf = PropFind()
@@ -118,51 +118,22 @@ object DAVParser {
         return 0 to LockInfo(isShared = false, isWrite = true, owner = owner)
     }
 
-    private const val infiniteDepth = -1
-    private const val invalidDepth = -2
-
-    fun parseDepth(s: String): Int {
-        return when (s) {
-            "0" -> 0
-            "1" -> infiniteDepth
-            else -> invalidDepth
+    fun writeLockInfo(token: String, details: LockDetails): String {
+        var depth = "infinity"
+        if (details.zeroDepth) {
+            depth = "0"
         }
-    }
-
-    private const val defTimeoutSeconds = 5
-    private const val maxTimeoutSeconds = 232 - 1
-    private const val infiniteTimeoutSeconds = -1
-
-    fun parseTimeout(text: String): Pair<Boolean, Int> {
-        if (text.isBlank()) {
-            return true to defTimeoutSeconds
-        }
-        var timeoutStr = text
-        val i = timeoutStr.lastIndexOf(',')
-        if (i>=0) {
-            timeoutStr = timeoutStr.substring(0, i)
-        }
-        timeoutStr = timeoutStr.trim()
-        if (timeoutStr == "Infinite") {
-            return true to infiniteTimeoutSeconds
-        }
-        val prefix = "Second-"
-        if (!timeoutStr.startsWith(prefix)) {
-            return false to 0
-        }
-        val timeoutSuffix = timeoutStr.substring(prefix.length + 1)
-        if (timeoutSuffix == "" || timeoutSuffix[0] < '0' || timeoutSuffix[0] > '9') {
-            return false to 0
-        }
-        val intResult = runCatching { timeoutSuffix.toInt() }
-        if (intResult.isFailure) {
-            return false to 0
-        }
-        val timeout = intResult.getOrElse { defTimeoutSeconds }
-        if (timeout < 0 || timeout > maxTimeoutSeconds) {
-            return false to 0
-        }
-        return true to timeout
+        return "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<D:prop xmlns:D=\"DAV:\"><D:lockdiscovery><D:activelock>\n" +
+                "<D:locktype><D:write/></D:locktype>\n" +
+                "<D:lockscope><D:exclusive/></D:lockscope>\n" +
+                "<D:depth>%s</D:depth>\n" +
+                "<D:owner><D:href>%s</D:href></D:owner>\n" +
+                "<D:timeout>Second-%d</D:timeout>\n" +
+                "<D:locktoken><D:href>%s</D:href></D:locktoken>\n" +
+                "<D:lockroot><D:href>%s</D:href></D:lockroot>\n" +
+                "</D:activelock></D:lockdiscovery></D:prop>"
+                    .format(depth, details.owner, details.duration, token, details.root)
     }
 
 }

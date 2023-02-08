@@ -1,13 +1,13 @@
 package xyz.scootaloo.server.xml
 
 import org.junit.jupiter.api.Test
-import xyz.scootaloo.server.service.webdav.DAVParser
+import xyz.scootaloo.server.service.webdav.DAVHelper
 
 /**
  * @author AppleSack
  * @since  2023/02/02
  */
-class DAVParserTest {
+class DAVHelperTest {
 
     @Test
     fun testXmlProp() {
@@ -22,7 +22,7 @@ class DAVParserTest {
                 </D:prop> 
             </D:propfind>
         """.trimIndent()
-        println(DAVParser.readPropfind(xml))
+        println(DAVHelper.readPropfind(xml))
     }
 
     @Test
@@ -33,7 +33,7 @@ class DAVParserTest {
                 <propname/>
             </propfind>
         """.trimIndent()
-        println(DAVParser.readPropfind(xml))
+        println(DAVHelper.readPropfind(xml))
     }
 
     @Test
@@ -44,7 +44,7 @@ class DAVParserTest {
                 <D:allprop/>
             </D:propfind>
         """.trimIndent()
-        println(DAVParser.readPropfind(xml))
+        println(DAVHelper.readPropfind(xml))
     }
 
     @Test
@@ -59,7 +59,7 @@ class DAVParserTest {
                 </D:include> 
             </D:propfind> 
         """.trimIndent()
-        println(DAVParser.readPropfind(xml))
+        println(DAVHelper.readPropfind(xml))
     }
 
 }

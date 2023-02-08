@@ -40,4 +40,10 @@ class IfHeaderTest {
         println(r)
     }
 
+    @Test
+    fun test4() {
+        val r = parseIfHeader("")
+        println(r)
+    }
+
 }

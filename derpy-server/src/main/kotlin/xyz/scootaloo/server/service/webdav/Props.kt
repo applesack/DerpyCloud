@@ -132,7 +132,6 @@ class MultiStatusRender(private val document: Document = DocumentHelper.createDo
         return document.asXML()
     }
 
-
 }
 
 private fun qname(name: String, ns: Namespace): QName {

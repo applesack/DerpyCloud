@@ -11,6 +11,7 @@ import xyz.scootaloo.server.context.Contexts
 import xyz.scootaloo.server.middleware.Middlewares
 import xyz.scootaloo.server.service.file.FileInfo
 import xyz.scootaloo.server.service.file.UFiles
+import xyz.scootaloo.server.service.file.UPaths
 import java.io.File
 
 /**
@@ -48,25 +49,76 @@ object WebDAV {
         return HttpResponseStatus.OK
     }
 
-    fun lock(ctx: RoutingContext): HttpResponseStatus {
+    suspend fun lock(ctx: RoutingContext): HttpResponseStatus {
         val timeoutHeader = ctx.request().getHeader("Timeout")
         val (valid, duration) = parseTimeout(timeoutHeader ?: "")
         if (!valid) {
             log.warn("错误的参数lock.timeout: {}", timeoutHeader)
             return HttpResponseStatus.BAD_REQUEST
         }
-        val (code, lockInfo) = DAVParser.readLockInfo(ctx.body().asString() ?: "")
+        val (code, lockInfo) = DAVHelper.readLockInfo(ctx.body().asString() ?: "")
         if (code != 0) {
             return HttpResponseStatus.valueOf(code)
         }
 
+        var token = ""
+        var lockDetails: LockDetails = LockDetails.NONE
+        var created = false
+        val us = Contexts.getOrCreate(ctx)
+        val ls = us.lock
+        val response = ctx.response()
         if (lockInfo == LockInfo.NONE) {
             // 空的锁结构代表使用当前token刷新一个锁
+            val (success, ifHeader) = parseIfHeader(ctx.body().asString() ?: "")
+            if (!success) {
+                return HttpResponseStatus.BAD_REQUEST
+            }
+            if (ifHeader.lists.size == 1 && ifHeader.lists[0].conditions.size == 1) {
+                token = ifHeader.lists[0].conditions[0].token
+            }
+            val (ld, err) = ls.refresh(token, duration)
+            if (err != Errors.None) {
+                if (err == Errors.NoSuchLock) {
+                    return HttpResponseStatus.PRECONDITION_FAILED
+                }
+                return HttpResponseStatus.INTERNAL_SERVER_ERROR
+            }
         } else {
             // 创建锁
+            val depth = parseDepth(ctx.request().getHeader("Depth") ?: "")
+            if (depth != 0 && depth != infiniteDepth) {
+                return HttpResponseStatus.BAD_REQUEST
+            }
+            val reqPath = ctx.pathParam("*")
+            lockDetails = LockDetails(reqPath, duration, lockInfo.owner, depth == 0)
+            val r = ls.create(lockDetails)
+            if (r.second != Errors.None) {
+                if (r.second == Errors.Locked) {
+                    return HttpResponseStatus.LOCKED
+                }
+                return HttpResponseStatus.INTERNAL_SERVER_ERROR
+            }
+            token = r.first
+            val safe = runCatching {
+                val fs = Middlewares.vertx.fileSystem()
+                val file = fs.open(UPaths.realPath(us.storageSpace, reqPath), openOptionsOf(create = true)).await()
+                file.close().await()
+            }
+            if (safe.isFailure) {
+                ls.unlock(token)
+                return HttpResponseStatus.BAD_REQUEST
+            }
+            created = true
+            response.putHeader("Lock-Token", "<$token>")
         }
 
-        TODO()
+        response.putHeader("Content-Type", "application/xml; charset=utf-8")
+        if (created) {
+            response.statusCode = HttpResponseStatus.CREATED.code()
+        }
+
+        response.end(DAVHelper.writeLockInfo(token, lockDetails))
+        return HttpResponseStatus.OK
     }
 
     fun get(ctx: RoutingContext) {
@@ -100,7 +152,7 @@ object WebDAV {
         if (depthHeader == null || depthHeader.isEmpty()) {
             depth = parseDepth(depthHeader ?: "1")
         }
-        val (success, pf) = awaitBlocking { DAVParser.readPropfind(ctx.body().asString() ?: "") }
+        val (success, pf) = awaitBlocking { DAVHelper.readPropfind(ctx.body().asString() ?: "") }
         if (!success) {
             return HttpResponseStatus.BAD_REQUEST
         }
@@ -208,11 +260,12 @@ object WebDAV {
         }
     }
 
-    private const val defTimeoutSeconds = 5
-    private const val maxTimeoutSeconds = 232 - 1
-    private const val infiniteTimeoutSeconds = -1
+    private const val defTimeoutSeconds = 5L
+    private const val maxTimeoutSeconds = 232 - 1L
+    private const val infiniteTimeoutSeconds = -1L
 
-    private fun parseTimeout(text: String): Pair<Boolean, Int> {
+    // 单位秒
+    private fun parseTimeout(text: String): Pair<Boolean, Long> {
         if (text.isBlank()) {
             return true to defTimeoutSeconds
         }
@@ -233,7 +286,7 @@ object WebDAV {
         if (timeoutSuffix == "" || timeoutSuffix[0] < '0' || timeoutSuffix[0] > '9') {
             return false to 0
         }
-        val intResult = runCatching { timeoutSuffix.toInt() }
+        val intResult = runCatching { timeoutSuffix.toLong() }
         if (intResult.isFailure) {
             return false to 0
         }

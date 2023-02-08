@@ -19,10 +19,14 @@ enum class Errors(val msg: String) {
 
 class LockDetails(
     val root: String,
-    val ttl: Long,
-    val ownerXML: String,
-    val zeroDepth: Boolean
-)
+    val duration: Long,
+    val owner: String,
+    val zeroDepth: Boolean // 单位秒
+) {
+    companion object {
+        val NONE = LockDetails("", 0, "", false)
+    }
+}
 
 class LockInfo(
     val isShared: Boolean,

@@ -27,16 +27,18 @@ object Contexts {
         this.vertx = vertx
     }
 
-    fun getOrCreate(ctx: RoutingContext) {
+    fun getOrCreate(ctx: RoutingContext): UserSpace {
         val username = "a"
-        ctx.put(USER_SPACE, getOrCreateUserSpace(username))
+        val us = getOrCreateUserSpace(username)
+        ctx.put(USER_SPACE, us)
+        return us
     }
 
     private fun getUserSpace(ctx: RoutingContext): UserSpace {
         return ctx.get(USER_SPACE) as UserSpace
     }
 
-    fun getOrCreateUserSpace(user: String): UserSpace {
+    private fun getOrCreateUserSpace(user: String): UserSpace {
         return usMap[user] ?: createUserSpace(user)
     }
 
