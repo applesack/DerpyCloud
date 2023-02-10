@@ -1,13 +1,28 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<D:multistatus xmlns:D="DAV:">
+<?xml version="1.0" encoding="utf-8"?>
+<D:multistatus xmlns:D="DAV:" xmlns:ns0="urn:uuid:294509a7-90a9-45dd-a0ac-912c11816c5f/"
+               xmlns:ns1="urn:schemas-microsoft-com:">
     <D:response>
-        <D:href>/dav/</D:href>
+        <D:href>/</D:href>
         <D:propstat>
             <D:prop>
-                <D:creationdate>2023-02-04T15:32:44+0800</D:creationdate>
+                <D:creationdate ns0:dt="datetime.tz">2023-02-10T21:21:25Z</D:creationdate>
                 <D:getcontenttype>httpd/unix-directory</D:getcontenttype>
-                <D:getlastmodified>Sat, 4 Feb 2023 10:29:17 GMT</D:getlastmodified>
-                <D:displayname></D:displayname>
+                <D:getlastmodified ns0:dt="dateTime.rfc1123">Fri, 10 Feb 2023 15:15:55 GMT</D:getlastmodified>
+                <D:getcontentlength>4096</D:getcontentlength>
+                <D:resourcetype>
+                    <D:collection/>
+                </D:resourcetype>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+    <D:response>
+        <D:href>/12212</D:href>
+        <D:propstat>
+            <D:prop>
+                <D:creationdate ns0:dt="datetime.tz">2023-02-10T23:15:55Z</D:creationdate>
+                <D:getcontenttype>httpd/unix-directory</D:getcontenttype>
+                <D:getlastmodified ns0:dt="dateTime.rfc1123">Thu, 1 Sep 2022 14:21:12 GMT</D:getlastmodified>
                 <D:getcontentlength>0</D:getcontentlength>
                 <D:resourcetype>
                     <D:collection/>
@@ -17,76 +32,195 @@
         </D:propstat>
     </D:response>
     <D:response>
-        <D:href>/dav/a.txt</D:href>
+        <D:href>/Bluegrass.mp3</D:href>
         <D:propstat>
             <D:prop>
-                <D:creationdate>2023-02-04T15:32:50+0800</D:creationdate>
+                <D:creationdate ns0:dt="datetime.tz">2023-02-10T23:15:49Z</D:creationdate>
+                <D:getcontenttype>audio/mpeg</D:getcontenttype>
+                <D:getlastmodified ns0:dt="dateTime.rfc1123">Tue, 13 Aug 2019 14:07:45 GMT</D:getlastmodified>
+                <D:getetag>"16c8b4e5f682354eb"</D:getetag>
+                <D:displayname>Bluegrass.mp3</D:displayname>
+                <D:getcontentlength>2315499</D:getcontentlength>
+                <D:resourcetype/>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+    <D:response>
+        <D:href>/d390301bc545a4be28848875.zip</D:href>
+        <D:propstat>
+            <D:prop>
+                <D:creationdate ns0:dt="datetime.tz">2023-02-10T23:15:54Z</D:creationdate>
+                <D:getcontenttype>application/zip</D:getcontenttype>
+                <D:getlastmodified ns0:dt="dateTime.rfc1123">Fri, 20 Sep 2019 14:49:20 GMT</D:getlastmodified>
+                <D:getetag>"16d4f261980149b444"</D:getetag>
+                <D:displayname>d390301bc545a4be28848875.zip</D:displayname>
+                <D:getcontentlength>21607492</D:getcontentlength>
+                <D:resourcetype/>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+    <D:response>
+        <D:href>/Documents%20Guide.guide</D:href>
+        <D:propstat>
+            <D:prop>
+                <D:creationdate ns0:dt="datetime.tz">2023-02-10T23:15:54Z</D:creationdate>
+                <D:getcontenttype>application/octet-stream</D:getcontenttype>
+                <D:getlastmodified ns0:dt="dateTime.rfc1123">Sun, 1 Sep 2019 09:40:30 GMT</D:getlastmodified>
+                <D:getetag>"16cec3286b09b09a"</D:getetag>
+                <D:displayname>Documents%20Guide.guide</D:displayname>
+                <D:getcontentlength>635034</D:getcontentlength>
+                <D:resourcetype/>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+    <D:response>
+        <D:href>/Kindle</D:href>
+        <D:propstat>
+            <D:prop>
+                <D:creationdate ns0:dt="datetime.tz">2023-02-10T23:15:55Z</D:creationdate>
+                <D:getcontenttype>httpd/unix-directory</D:getcontenttype>
+                <D:getlastmodified ns0:dt="dateTime.rfc1123">Fri, 10 Feb 2023 15:14:56 GMT</D:getlastmodified>
+                <D:getcontentlength>0</D:getcontentlength>
+                <D:resourcetype>
+                    <D:collection/>
+                </D:resourcetype>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+    <D:response>
+        <D:href>/Picture.png</D:href>
+        <D:propstat>
+            <D:prop>
+                <D:creationdate ns0:dt="datetime.tz">2023-02-10T23:15:54Z</D:creationdate>
+                <D:getcontenttype>image/png</D:getcontenttype>
+                <D:getlastmodified ns0:dt="dateTime.rfc1123">Tue, 13 Aug 2019 14:07:46 GMT</D:getlastmodified>
+                <D:getetag>"16c8b4e63502c2ac"</D:getetag>
+                <D:displayname>Picture.png</D:displayname>
+                <D:getcontentlength>180908</D:getcontentlength>
+                <D:resourcetype/>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+    <D:response>
+        <D:href>/%E4%B8%8B%E8%BD%BD</D:href>
+        <D:propstat>
+            <D:prop>
+                <D:creationdate ns0:dt="datetime.tz">2023-02-10T23:15:49Z</D:creationdate>
+                <D:getcontenttype>httpd/unix-directory</D:getcontenttype>
+                <D:getlastmodified ns0:dt="dateTime.rfc1123">Fri, 13 Sep 2019 09:13:07 GMT</D:getlastmodified>
+                <D:getcontentlength>0</D:getcontentlength>
+                <D:resourcetype>
+                    <D:collection/>
+                </D:resourcetype>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+    <D:response>
+        <D:href>/%E7%94%BB%E7%AC%942</D:href>
+        <D:propstat>
+            <D:prop>
+                <D:creationdate ns0:dt="datetime.tz">2023-02-10T23:15:48Z</D:creationdate>
+                <D:getcontenttype>httpd/unix-directory</D:getcontenttype>
+                <D:getlastmodified ns0:dt="dateTime.rfc1123">Fri, 10 Feb 2023 15:15:49 GMT</D:getlastmodified>
+                <D:getcontentlength>4096</D:getcontentlength>
+                <D:resourcetype>
+                    <D:collection/>
+                </D:resourcetype>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+    <D:response>
+        <D:href>/%E7%94%BB%E7%AC%942/%E6%B5%B7%E6%80%AA-%E4%B8%8A%E8%89%B2%E7%AC%94.brush</D:href>
+        <D:propstat>
+            <D:prop>
+                <D:creationdate ns0:dt="datetime.tz">2023-02-10T23:15:48Z</D:creationdate>
+                <D:getcontenttype>application/octet-stream</D:getcontenttype>
+                <D:getlastmodified ns0:dt="dateTime.rfc1123">Wed, 11 Sep 2019 03:02:18 GMT</D:getlastmodified>
+                <D:getetag>"16d1e458e909443"</D:getetag>
+                <D:displayname>%E6%B5%B7%E6%80%AA-%E4%B8%8A%E8%89%B2%E7%AC%94.brush</D:displayname>
+                <D:getcontentlength>37955</D:getcontentlength>
+                <D:resourcetype/>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+    <D:response>
+        <D:href>/%E7%94%BB%E7%AC%942/%E6%B5%B7%E6%80%AA-%E5%8B%BE%E7%BA%BF%E7%AC%94.brush</D:href>
+        <D:propstat>
+            <D:prop>
+                <D:creationdate ns0:dt="datetime.tz">2023-02-10T23:15:49Z</D:creationdate>
+                <D:getcontenttype>application/octet-stream</D:getcontenttype>
+                <D:getlastmodified ns0:dt="dateTime.rfc1123">Wed, 11 Sep 2019 03:02:35 GMT</D:getlastmodified>
+                <D:getetag>"16d1e45d0f8325a"</D:getetag>
+                <D:displayname>%E6%B5%B7%E6%80%AA-%E5%8B%BE%E7%BA%BF%E7%AC%94.brush</D:displayname>
+                <D:getcontentlength>12890</D:getcontentlength>
+                <D:resourcetype/>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+    <D:response>
+        <D:href>/%E7%94%BB%E7%AC%942/%E6%B5%B7%E6%80%AA-%E5%96%B7%E6%9E%AA.brush</D:href>
+        <D:propstat>
+            <D:prop>
+                <D:creationdate ns0:dt="datetime.tz">2023-02-10T23:15:48Z</D:creationdate>
+                <D:getcontenttype>application/octet-stream</D:getcontenttype>
+                <D:getlastmodified ns0:dt="dateTime.rfc1123">Wed, 11 Sep 2019 03:01:14 GMT</D:getlastmodified>
+                <D:getetag>"16d1e4494902636d"</D:getetag>
+                <D:displayname>%E6%B5%B7%E6%80%AA-%E5%96%B7%E6%9E%AA.brush</D:displayname>
+                <D:getcontentlength>156525</D:getcontentlength>
+                <D:resourcetype/>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+    <D:response>
+        <D:href>/%E7%94%BB%E7%AC%942/%E6%B5%B7%E6%80%AA-%E5%9C%86%E7%AC%94.brush</D:href>
+        <D:propstat>
+            <D:prop>
+                <D:creationdate ns0:dt="datetime.tz">2023-02-10T23:15:48Z</D:creationdate>
+                <D:getcontenttype>application/octet-stream</D:getcontenttype>
+                <D:getlastmodified ns0:dt="dateTime.rfc1123">Wed, 11 Sep 2019 03:02:03 GMT</D:getlastmodified>
+                <D:getetag>"16d1e4553f831c1"</D:getetag>
+                <D:displayname>%E6%B5%B7%E6%80%AA-%E5%9C%86%E7%AC%94.brush</D:displayname>
+                <D:getcontentlength>12737</D:getcontentlength>
+                <D:resourcetype/>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+    <D:response>
+        <D:href>/%E7%94%BB%E7%AC%942/%E6%B5%B7%E6%80%AA-%E5%B9%B3%E5%A4%B4%E7%AC%94.brush</D:href>
+        <D:propstat>
+            <D:prop>
+                <D:creationdate ns0:dt="datetime.tz">2023-02-10T23:15:48Z</D:creationdate>
+                <D:getcontenttype>application/octet-stream</D:getcontenttype>
+                <D:getlastmodified ns0:dt="dateTime.rfc1123">Wed, 11 Sep 2019 02:57:25 GMT</D:getlastmodified>
+                <D:getetag>"16d1e41160813ac2"</D:getetag>
+                <D:displayname>%E6%B5%B7%E6%80%AA-%E5%B9%B3%E5%A4%B4%E7%AC%94.brush</D:displayname>
+                <D:getcontentlength>80578</D:getcontentlength>
+                <D:resourcetype/>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+    <D:response>
+        <D:href>/%E8%AF%AD%E5%BD%95.txt</D:href>
+        <D:propstat>
+            <D:prop>
+                <D:creationdate ns0:dt="datetime.tz">2023-02-10T23:15:55Z</D:creationdate>
                 <D:getcontenttype>text/plain</D:getcontenttype>
-                <D:getlastmodified>Sat, 4 Feb 2023 07:33:06 GMT</D:getlastmodified>
-                <D:getetag>"1861b57d59f6"</D:getetag>
-                <D:displayname>a.txt</D:displayname>
-                <D:getcontentlength>6</D:getcontentlength>
-                <D:resourcetype/>
-            </D:prop>
-            <D:status>HTTP/1.1 200 OK</D:status>
-        </D:propstat>
-    </D:response>
-    <D:response>
-        <D:href>/dav/b.c</D:href>
-        <D:propstat>
-            <D:prop>
-                <D:creationdate>2023-02-04T15:33:03+0800</D:creationdate>
-                <D:getcontenttype>text/x-c</D:getcontenttype>
-                <D:getlastmodified>Sat, 4 Feb 2023 07:33:03 GMT</D:getlastmodified>
-                <D:getetag>"1861b57cacd0"</D:getetag>
-                <D:displayname>b.c</D:displayname>
-                <D:getcontentlength>0</D:getcontentlength>
-                <D:resourcetype/>
-            </D:prop>
-            <D:status>HTTP/1.1 200 OK</D:status>
-        </D:propstat>
-    </D:response>
-    <D:response>
-        <D:href>/dav/dir%25E6%2596%2587%25E4%25BB%25B6%25E7%259B%25AE%25E5%25BD%2595/</D:href>
-        <D:propstat>
-            <D:prop>
-                <D:creationdate>2023-02-04T18:29:17+0800</D:creationdate>
-                <D:getcontenttype>httpd/unix-directory</D:getcontenttype>
-                <D:getlastmodified>Sat, 4 Feb 2023 10:32:31 GMT</D:getlastmodified>
-                <D:displayname>dir%E6%96%87%E4%BB%B6%E7%9B%AE%E5%BD%95</D:displayname>
-                <D:getcontentlength>0</D:getcontentlength>
-                <D:resourcetype>
-                    <D:collection/>
-                </D:resourcetype>
-            </D:prop>
-            <D:status>HTTP/1.1 200 OK</D:status>
-        </D:propstat>
-    </D:response>
-    <D:response>
-        <D:href>/dav/dir%25E6%2596%2587%25E4%25BB%25B6%25E7%259B%25AE%25E5%25BD%2595/abc</D:href>
-        <D:propstat>
-            <D:prop>
-                <D:creationdate>2023-02-04T18:32:28+0800</D:creationdate>
-                <D:getcontenttype>application/octet-stream</D:getcontenttype>
-                <D:getlastmodified>Sat, 4 Feb 2023 10:32:31 GMT</D:getlastmodified>
-                <D:getetag>"1861bfc1664d"</D:getetag>
-                <D:displayname>abc</D:displayname>
-                <D:getcontentlength>13</D:getcontentlength>
-                <D:resourcetype/>
-            </D:prop>
-            <D:status>HTTP/1.1 200 OK</D:status>
-        </D:propstat>
-    </D:response>
-    <D:response>
-        <D:href>/dav/%25E4%25BD%25A0%25E5%25A5%25BD%25E4%25B8%2596%25E7%2595%258C</D:href>
-        <D:propstat>
-            <D:prop>
-                <D:creationdate>2023-02-04T18:17:26+0800</D:creationdate>
-                <D:getcontenttype>application/octet-stream</D:getcontenttype>
-                <D:getlastmodified>Sat, 4 Feb 2023 10:17:26 GMT</D:getlastmodified>
-                <D:getetag>"1861bee4a380"</D:getetag>
-                <D:displayname>%E4%BD%A0%E5%A5%BD%E4%B8%96%E7%95%8C</D:displayname>
-                <D:getcontentlength>0</D:getcontentlength>
+                <D:getlastmodified ns0:dt="dateTime.rfc1123">Sat, 13 Aug 2022 03:23:07 GMT</D:getlastmodified>
+                <D:getetag>"182953a1178633"</D:getetag>
+                <D:displayname>%E8%AF%AD%E5%BD%95.txt</D:displayname>
+                <D:getcontentlength>1587</D:getcontentlength>
                 <D:resourcetype/>
             </D:prop>
             <D:status>HTTP/1.1 200 OK</D:status>

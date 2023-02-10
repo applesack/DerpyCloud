@@ -2,7 +2,6 @@ package xyz.scootaloo.server.service.webdav
 
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.ext.web.RoutingContext
-import io.vertx.kotlin.config.configChangeOf
 import io.vertx.kotlin.core.file.openOptionsOf
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitBlocking
@@ -21,31 +20,23 @@ import java.io.File
  */
 object WebDAV {
 
-    const val prefix = "/dav"
+    // webdav 服务器的默认路由前缀
+    // 由于目前的设计, 管理静态资源的处理器使用了vertx的StaticHandler
+    // 但StaticHandler使用了完整的uri作为文件名, 这会导致客户端不能获取到真实的文件
+    // 在使用StaticHandler作为静态资源处理器时, 路由前缀只能是"/"
+    const val prefix = "/"
 
     private val log = LoggerFactory.getLogger("webdav")
 
-    private const val defOptionsAllow = "OPTIONS, LOCK, PUT, MKCOL"
-    private const val fileOptionsAllow = "OPTIONS, LOCK, GET, HEAD, POST, DELETE, PROPPATCH," +
-            " COPY, MOVE, UNLOCK, PROPFIND, PUT"
-    private const val dirOptionsAllow = "OPTIONS, LOCK, DELETE, PROPPATCH, COPY, MOVE, UNLOCK, PROPFIND"
+    private const val defOptionsAllow = "OPTIONS, PROPFIND, GET, HEAD, PUT, " +
+            "DELETE, COPY, MOVE, MKCOL, LOCK, UNLOCK, POST"
 
-    suspend fun options(ctx: RoutingContext): HttpResponseStatus {
-        val reqPath = UPaths.slashClean(ctx.pathParam("*"))
-        val storage = Contexts.getStorage(ctx)
-        val (exists, fi) = UFiles.isPathExists(storage, reqPath)
-        var allow = defOptionsAllow
-        if (exists) {
-            allow = if (fi.isDir) {
-                dirOptionsAllow
-            } else {
-                fileOptionsAllow
-            }
-        }
+    fun options(ctx: RoutingContext): HttpResponseStatus {
         val respHeader = ctx.response().headers()
-        respHeader.add("Allow", allow)
-        respHeader.add("DAV", "1, 2")
+        respHeader.add("Allow", defOptionsAllow)
+        respHeader.add("DAV", "1,2")
         respHeader.add("MS-Author-Via", "DAV")
+        respHeader.add("Accept-Ranges", "bytes")
         ctx.end()
         return HttpResponseStatus.OK
     }
@@ -63,9 +54,9 @@ object WebDAV {
         }
 
         var token = ""
-        var lockDetails: LockDetails = LockDetails.NONE
+        val lockDetails: LockDetails
         var created = false
-        val us = Contexts.getOrCreate(ctx)
+        val us = Contexts.get(ctx)
         val ls = us.lock
         val response = ctx.response()
         if (lockInfo == LockInfo.NONE) {
@@ -123,18 +114,19 @@ object WebDAV {
         return HttpResponseStatus.OK
     }
 
-    suspend fun unlock(ctx: RoutingContext): HttpResponseStatus {
+    fun unlock(ctx: RoutingContext): HttpResponseStatus {
         var token = ctx.request().getHeader("Lock-Token")
         if (token == null || token.length <= 2 || token[0] != '<' || token.last() != '>') {
             return HttpResponseStatus.BAD_REQUEST
         }
         token = token.substring(1, token.length - 1)
-        val ls = Contexts.getOrCreate(ctx).lock
+        val ls = Contexts.get(ctx).lock
         return when (ls.unlock(token)) {
             Errors.None -> {
                 ctx.response().statusCode = HttpResponseStatus.NO_CONTENT.code()
                 HttpResponseStatus.OK
             }
+
             Errors.Forbidden -> HttpResponseStatus.FORBIDDEN
             Errors.Locked -> HttpResponseStatus.LOCKED
             Errors.NoSuchLock -> HttpResponseStatus.CONFLICT
@@ -142,7 +134,7 @@ object WebDAV {
         }
     }
 
-    suspend fun get(ctx: RoutingContext) {
+    fun get(ctx: RoutingContext) {
         val storage = Contexts.getStorage(ctx)
         storage.staticResources.handle(ctx)
     }
@@ -171,9 +163,9 @@ object WebDAV {
             return HttpResponseStatus.NOT_FOUND
         }
         var depth = infiniteDepth
-        val depthHeader = ctx.request().getHeader("Depth")
-        if (depthHeader == null || depthHeader.isEmpty()) {
-            depth = parseDepth(depthHeader ?: "1")
+        val depthHeader = ctx.request().getHeader("Depth") ?: ""
+        if (depthHeader.isNotEmpty()) {
+            depth = parseDepth(depthHeader)
         }
         val (success, pf) = awaitBlocking { DAVHelper.readPropfind(ctx.body().asString() ?: "") }
         if (!success) {

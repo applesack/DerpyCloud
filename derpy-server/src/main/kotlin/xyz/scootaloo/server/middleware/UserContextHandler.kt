@@ -4,7 +4,6 @@ import io.vertx.core.Handler
 import io.vertx.ext.web.RoutingContext
 import kotlinx.coroutines.launch
 import xyz.scootaloo.server.context.Contexts
-import kotlin.system.exitProcess
 
 /**
  * @author AppleSack
@@ -16,7 +15,7 @@ object UserContextHandler : Handler<RoutingContext> {
 
     override fun handle(event: RoutingContext) {
         Middlewares.coroutine.launch {
-            Contexts.getOrCreate(event)
+            Contexts.waitGetOrCreate(event)
             Middlewares.mark(event, NAME)
             event.next()
         }

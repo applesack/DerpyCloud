@@ -30,14 +30,18 @@ object Contexts {
         this.vertx = vertx
     }
 
-    suspend fun getOrCreate(ctx: RoutingContext): UserSpace {
+    suspend fun waitGetOrCreate(ctx: RoutingContext): UserSpace {
         val userId = ctx.get<String>(USER_ID) ?: UserService.getDefaultUserId().toString()
         val us = getOrCreateUserSpace(userId)
         ctx.put(USER_SPACE, us)
         return us
     }
 
-    suspend fun getStorage(ctx: RoutingContext): StorageSpace {
+    fun get(ctx: RoutingContext): UserSpace {
+        return getUserSpace(ctx)
+    }
+
+    fun getStorage(ctx: RoutingContext): StorageSpace {
         return getUserSpace(ctx).storageSpace
     }
 

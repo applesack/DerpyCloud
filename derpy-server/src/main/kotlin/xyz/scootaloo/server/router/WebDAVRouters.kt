@@ -71,10 +71,7 @@ object WebDAVRouters {
         }
 
         router.route(HttpMethod.GET, "/*").handler {
-            it.coroutineSafeCall {
-                WebDAV.get(it)
-                HttpResponseStatus.OK
-            }
+            WebDAV.get(it)
         }
 
         return router

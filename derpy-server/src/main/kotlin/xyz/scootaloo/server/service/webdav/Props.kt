@@ -10,8 +10,7 @@ import org.dom4j.Namespace
 import org.dom4j.QName
 import xyz.scootaloo.server.service.file.FileInfo
 import xyz.scootaloo.server.service.file.UPaths
-import java.time.LocalDateTime
-import java.time.ZoneId
+import java.text.SimpleDateFormat
 import java.util.*
 
 /**
@@ -78,8 +77,8 @@ object Props {
     val liveProps: Map<XName, Pair<Boolean, PropRender>> by lazy {
         val map = HashMap<XName, Pair<Boolean, PropRender>>()
         map[XName("DAV:", "resourcetype")] = true to PropRender { f, r -> findResourceType(f, r) }
-        map[XName("DAV:", "displayname")] = true to PropRender { f, r -> findDisplayName(f, r) }
-        map[XName("DAV:", "getcontentlength")] = true to PropRender { f, r ->  findContentLength(f, r) }
+        map[XName("DAV:", "displayname")] = false to PropRender { f, r -> findDisplayName(f, r) }
+        map[XName("DAV:", "getcontentlength")] = true to PropRender { f, r -> findContentLength(f, r) }
         map[XName("DAV:", "getlastmodified")] = true to PropRender { f, r -> findLastModified(f, r) }
         map[XName("DAV:", "creationdate")] = true to PropRender { f, r -> findCreationDate(f, r) }
         map[XName("DAV:", "getcontenttype")] = true to PropRender { f, r -> findContentType(f, r) }
@@ -98,18 +97,25 @@ object Props {
 
 }
 
+private val appUrnToken by lazy { "urn:uuid:${UUID.randomUUID().toString()}/" }
+private const val APP_TKN_NS = "ns0"
+private const val CONTENT_NS = "ns1"
+private const val CONTENT_SCHEMA = "urn:schemas-microsoft-com:"
+
 class MultiStatusRender(private val document: Document = DocumentHelper.createDocument()) {
     private val namespace = Namespace("D", "DAV:")
     private val root get() = document.rootElement
 
     init {
         document.addElement(qname("multistatus", namespace))
+        root.addNamespace(APP_TKN_NS, appUrnToken)
+        root.addNamespace(CONTENT_NS, CONTENT_SCHEMA)
     }
 
     fun addResp(resp: MultiResponse) {
         val respLabel = root.addElement(qname("response", namespace))
         val hrefLabel = respLabel.addElement(qname("href", namespace))
-        hrefLabel.addText(UPaths.href(UPaths.encodeUri(resp.href)))
+        hrefLabel.addText(UPaths.href(resp.href))
         for (propStat in resp.propStats) {
             val propStatLabel = respLabel.addElement(qname("propstat", namespace))
             val propLabel = propStatLabel.addElement(qname("prop", namespace))
@@ -130,6 +136,7 @@ class MultiStatusRender(private val document: Document = DocumentHelper.createDo
     }
 
     fun buildXML(): String {
+        document.xmlEncoding = "utf-8"
         return document.asXML()
     }
 
@@ -159,14 +166,15 @@ private fun findDisplayName(fi: FileInfo, root: Element) {
 }
 
 private fun findLastModified(fi: FileInfo, root: Element) {
+    root.addAttribute("ns0:dt", "dateTime.rfc1123")
     root.addText(Utils.formatRFC1123DateTime(fi.modTime))
 }
 
-private val zoneGMT by lazy { ZoneId.of("GMT") }
+private val rfc3339Format by lazy { SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'") }
 
 private fun findCreationDate(fi: FileInfo, root: Element) {
-    // rfc3339
-    root.addText(LocalDateTime.ofInstant(Date(fi.creationTime).toInstant(), zoneGMT).toString() + 'Z')
+    root.addAttribute("ns0:dt", "datetime.tz")
+    root.addText(rfc3339Format.format(Date(fi.creationTime)))
 }
 
 private fun findContentType(fi: FileInfo, root: Element) {

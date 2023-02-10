@@ -20,11 +20,11 @@ class StorageSpace(
     private var hasInit = false
     val staticResources: StaticHandler by lazy {
         StaticHandler.create(FileSystemAccess.ROOT, realPrefixString)
-            .setCachingEnabled(true)
-            .setEnableFSTuning(true)
-            .setFilesReadOnly(true)
-            .setCachingEnabled(true)
-            .setMaxCacheSize(512)
+//            .setCachingEnabled(true)
+//            .setEnableFSTuning(true)
+//            .setFilesReadOnly(true)
+//            .setCachingEnabled(true)
+//            .setMaxCacheSize(512)
             .setEnableRangeSupport(true)
     }
 

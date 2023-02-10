@@ -49,8 +49,8 @@ object UFiles {
 
         val childFiles = getChildFiles(storage, fs, info)
         for (childFile in childFiles) {
-            val filename = UPaths.join(name, childFile.name)
-            error = walkFS(storage, fs, childFile, dep, filename, walkFun)
+            val filepath = UPaths.join(name, childFile.name)
+            error = walkFS(storage, fs, childFile, dep, filepath, walkFun)
             if (error != Errors.None) {
                 if (!childFile.isDir || error != Errors.SkipDir) {
                     return error

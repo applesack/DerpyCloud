@@ -1,6 +1,6 @@
 package xyz.scootaloo.server.service.file
 
-import xyz.scootaloo.server.context.AppConfig
+import io.vertx.core.http.impl.HttpUtils
 import xyz.scootaloo.server.context.StorageSpace
 import xyz.scootaloo.server.service.webdav.WebDAV
 import java.net.URLEncoder
@@ -23,8 +23,7 @@ object UPaths {
     }
 
     fun clean(path: String): String {
-        // todo 归一化, 去除路径上的 ./和../
-        return path
+        return HttpUtils.removeDots(path)
     }
 
     fun relative(base: Path, cur: Path): String {
@@ -63,7 +62,8 @@ object UPaths {
     }
 
     fun href(path: String): String {
-        return UPaths.encodeUri(WebDAV.prefix + path)
+        val prefix = WebDAV.prefix
+        return encodeUri(join(prefix, path))
     }
 
     fun encodeUri(path: String): String {
@@ -77,17 +77,25 @@ object UPaths {
         for (name in names) {
             size += name.length
         }
-        if (size == 0) {
-            return ""
-        }
         val buff = StringBuilder(size + names.size - 1)
         for (name in names) {
-            if (buff.isNotEmpty() || name != "") {
-                buff.append("/")
+            if (name.isEmpty()) {
+                continue
             }
-            buff.append(name)
+            if (!name.startsWith('/')) {
+                buff.append('/')
+            }
+            if (name.isNotEmpty() && name.endsWith('/')) {
+                buff.append(name.trimEnd('/'))
+            } else {
+                buff.append(name)
+            }
         }
-        return clean(buff.toString())
+        val path = buff.toString()
+        if (path.isEmpty()) {
+            return "/"
+        }
+        return clean(path)
     }
 
 }
