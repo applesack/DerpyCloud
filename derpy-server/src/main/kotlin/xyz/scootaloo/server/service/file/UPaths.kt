@@ -19,7 +19,7 @@ object UPaths {
         if (out == "" || out[0] == '/') {
             out = "/$out"
         }
-        return UPaths.clean(out)
+        return clean(out)
     }
 
     fun clean(path: String): String {

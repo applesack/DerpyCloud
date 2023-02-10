@@ -83,6 +83,7 @@ object WebDAV {
                 }
                 return HttpResponseStatus.INTERNAL_SERVER_ERROR
             }
+            lockDetails = ld
         } else {
             // 创建锁
             val depth = parseDepth(ctx.request().getHeader("Depth") ?: "")

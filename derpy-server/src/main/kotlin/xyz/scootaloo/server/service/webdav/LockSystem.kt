@@ -47,7 +47,7 @@ interface LockSystem {
      *
      * 参考 http://www.webdav.org/specs/rfc4918.html#rfc.section.9.10.6
      */
-    fun refresh(token: String, ttl: Long): Pair<LockDetails, Errors>
+    fun refresh(token: String, duration: Long): Pair<LockDetails, Errors>
 
     /**
      * **使用指定的token解锁**
