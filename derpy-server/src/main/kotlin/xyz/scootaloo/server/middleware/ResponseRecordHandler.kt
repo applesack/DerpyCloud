@@ -20,6 +20,8 @@ object ResponseRecordHandler : Handler<RoutingContext> {
             val info = buildString {
                 append(remoteIpAddress(event))
                 append(" ")
+                append(event.request().method())
+                append(" ")
                 append(requestPath(event))
                 append(" | ")
                 append(duration(event))

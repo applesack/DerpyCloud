@@ -2,6 +2,7 @@ package xyz.scootaloo.server.context
 
 import io.vertx.core.Vertx
 import io.vertx.ext.web.RoutingContext
+import xyz.scootaloo.server.service.user.UserService
 import xyz.scootaloo.server.service.webdav.Locks
 
 /**
@@ -14,7 +15,9 @@ object Contexts {
 
     private const val USER_SPACE = "user.space"
 
-    const val USER_INFO = "user.info"
+    const val USER_NAME = "user.name"
+
+    const val USER_ID = "user.id"
 
     const val GUEST_USER = "guest"
 
@@ -27,30 +30,30 @@ object Contexts {
         this.vertx = vertx
     }
 
-    fun getOrCreate(ctx: RoutingContext): UserSpace {
-        val username = "a"
-        val us = getOrCreateUserSpace(username)
+    suspend fun getOrCreate(ctx: RoutingContext): UserSpace {
+        val userId = ctx.get<String>(USER_ID) ?: UserService.getDefaultUserId().toString()
+        val us = getOrCreateUserSpace(userId)
         ctx.put(USER_SPACE, us)
         return us
+    }
+
+    suspend fun getStorage(ctx: RoutingContext): StorageSpace {
+        return getUserSpace(ctx).storageSpace
     }
 
     private fun getUserSpace(ctx: RoutingContext): UserSpace {
         return ctx.get(USER_SPACE) as UserSpace
     }
 
-    private fun getOrCreateUserSpace(user: String): UserSpace {
-        return usMap[user] ?: createUserSpace(user)
+    private suspend fun getOrCreateUserSpace(userId: String): UserSpace {
+        return usMap[userId] ?: createUserSpace(userId)
     }
 
-    fun getStorage(ctx: RoutingContext): StorageSpace {
-        return getUserSpace(ctx).storageSpace
-    }
-
-    private fun createUserSpace(user: String): UserSpace {
-        val store = StorageSpace("test")
+    private suspend fun createUserSpace(userId: String): UserSpace {
+        val store = StorageSpace(userId).initSpace(vertx.fileSystem())
         val ls = Locks.create()
         return UserSpace(store, ls).apply {
-            usMap[user] = this
+            usMap[userId] = this
         }
     }
 

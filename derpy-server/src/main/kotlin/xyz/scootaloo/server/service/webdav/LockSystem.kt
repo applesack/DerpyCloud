@@ -1,5 +1,6 @@
 package xyz.scootaloo.server.service.webdav
 
+import xyz.scootaloo.server.service.file.UPaths
 import java.util.*
 import kotlin.collections.HashMap
 
@@ -77,7 +78,7 @@ enum class Errors(val msg: String) {
 }
 
 class LockDetails(
-    val root: String,
+    var root: String,
     var duration: Long = 0, // 单位秒
     val owner: String = "",
     val zeroDepth: Boolean = false
@@ -133,13 +134,13 @@ private class MemLockSystem(
         var n0: MemLSNode = MemLSNode.NONE
         var n1: MemLSNode = MemLSNode.NONE
         if (name0.isNotEmpty()) {
-            n0 = lookup(name0, conditions)
+            n0 = lookup(UPaths.slashClean(name0), conditions)
             if (n0 == MemLSNode.NONE) {
                 return {} to Errors.ConfirmationFailed
             }
         }
         if (name1.isNotEmpty()) {
-            n1 = lookup(name1, conditions)
+            n1 = lookup(UPaths.slashClean(name1), conditions)
             if (n1 == MemLSNode.NONE) {
                 return {} to Errors.ConfirmationFailed
             }
@@ -166,6 +167,7 @@ private class MemLockSystem(
     override fun create(details: LockDetails): Pair<String, Errors> {
         val currentTimeMillis = System.currentTimeMillis()
         collectExpiryLocks(currentTimeMillis)
+        details.root = UPaths.slashClean(details.root)
         if (!canCreate(details.root, details.zeroDepth)) {
             return "" to Errors.Locked
         }

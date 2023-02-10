@@ -71,7 +71,10 @@ object WebDAVRouters {
         }
 
         router.route(HttpMethod.GET, "/*").handler {
-            WebDAV.get(it)
+            it.coroutineSafeCall {
+                WebDAV.get(it)
+                HttpResponseStatus.OK
+            }
         }
 
         return router
@@ -91,7 +94,10 @@ object WebDAVRouters {
 
             val rCode = result.getOrThrow().code()
             if (rCode >= 300) {
-                ctx.fail(rCode)
+                return@launch ctx.fail(rCode)
+            }
+            if (!ctx.response().ended()) {
+                ctx.end()
             }
         }
     }

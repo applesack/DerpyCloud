@@ -150,6 +150,10 @@ private fun findContentLength(fi: FileInfo, root: Element) {
 }
 
 private fun findDisplayName(fi: FileInfo, root: Element) {
+    if (UPaths.slashClean(fi.name) == "/") {
+        root.addText("")
+        return
+    }
     root.addText(UPaths.encodeUri(fi.name))
 }
 
@@ -157,7 +161,7 @@ private fun findLastModified(fi: FileInfo, root: Element) {
     root.addText(Utils.formatRFC1123DateTime(fi.modTime))
 }
 
-private val rfc3339format by lazy { SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ") }
+private val rfc3339format by lazy { SimpleDateFormat("yyyy-MM-dd'T'h:m:ssZ") }
 
 private fun findCreationDate(fi: FileInfo, root: Element) {
     root.addText(rfc3339format.format(Date(fi.creationTime)))

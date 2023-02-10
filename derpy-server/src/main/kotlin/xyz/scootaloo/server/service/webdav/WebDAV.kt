@@ -31,7 +31,7 @@ object WebDAV {
     private const val dirOptionsAllow = "OPTIONS, LOCK, DELETE, PROPPATCH, COPY, MOVE, UNLOCK, PROPFIND"
 
     suspend fun options(ctx: RoutingContext): HttpResponseStatus {
-        val reqPath = ctx.pathParam("*")
+        val reqPath = UPaths.slashClean(ctx.pathParam("*"))
         val storage = Contexts.getStorage(ctx)
         val (exists, fi) = UFiles.isPathExists(storage, reqPath)
         var allow = defOptionsAllow
@@ -91,7 +91,7 @@ object WebDAV {
             if (depth != 0 && depth != infiniteDepth) {
                 return HttpResponseStatus.BAD_REQUEST
             }
-            val reqPath = ctx.pathParam("*")
+            val reqPath = UPaths.slashClean(ctx.pathParam("*"))
             lockDetails = LockDetails(reqPath, duration, lockInfo.owner, depth == 0)
             val r = ls.create(lockDetails)
             if (r.second != Errors.None) {
@@ -123,7 +123,7 @@ object WebDAV {
         return HttpResponseStatus.OK
     }
 
-    fun unlock(ctx: RoutingContext): HttpResponseStatus {
+    suspend fun unlock(ctx: RoutingContext): HttpResponseStatus {
         var token = ctx.request().getHeader("Lock-Token")
         if (token == null || token.length <= 2 || token[0] != '<' || token.last() != '>') {
             return HttpResponseStatus.BAD_REQUEST
@@ -131,7 +131,10 @@ object WebDAV {
         token = token.substring(1, token.length - 1)
         val ls = Contexts.getOrCreate(ctx).lock
         return when (ls.unlock(token)) {
-            Errors.None -> HttpResponseStatus.NO_CONTENT
+            Errors.None -> {
+                ctx.response().statusCode = HttpResponseStatus.NO_CONTENT.code()
+                HttpResponseStatus.OK
+            }
             Errors.Forbidden -> HttpResponseStatus.FORBIDDEN
             Errors.Locked -> HttpResponseStatus.LOCKED
             Errors.NoSuchLock -> HttpResponseStatus.CONFLICT
@@ -139,18 +142,20 @@ object WebDAV {
         }
     }
 
-    fun get(ctx: RoutingContext) {
+    suspend fun get(ctx: RoutingContext) {
         val storage = Contexts.getStorage(ctx)
         storage.staticResources.handle(ctx)
     }
 
     fun put(ctx: RoutingContext) {
         Middlewares.coroutine.launch {
+            // todo 待实现
             val fs = Middlewares.vertx.fileSystem()
             val homeDir = "derpy"
             if (!fs.exists(homeDir).await()) {
                 fs.mkdirs(homeDir).await()
             }
+
             val destPath = homeDir + File.separator + ctx.pathParam("*")
             val destFile = fs.open(destPath, openOptionsOf()).await()
             ctx.request().pipeTo(destFile).await()
@@ -159,7 +164,7 @@ object WebDAV {
     }
 
     suspend fun propfind(ctx: RoutingContext): HttpResponseStatus {
-        val reqPath = ctx.pathParam("*")
+        val reqPath = UPaths.slashClean(ctx.pathParam("*"))
         val storage = Contexts.getStorage(ctx)
         val (exists, fi) = UFiles.isPathExists(storage, reqPath)
         if (!exists) {

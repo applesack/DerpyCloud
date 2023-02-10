@@ -16,7 +16,7 @@ object UPaths {
 
     fun slashClean(name: String): String {
         var out = name
-        if (out == "" || out[0] == '/') {
+        if (out == "" || out[0] != '/') {
             out = "/$out"
         }
         return clean(out)
