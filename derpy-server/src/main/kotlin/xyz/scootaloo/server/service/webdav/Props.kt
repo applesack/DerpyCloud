@@ -10,7 +10,8 @@ import org.dom4j.Namespace
 import org.dom4j.QName
 import xyz.scootaloo.server.service.file.FileInfo
 import xyz.scootaloo.server.service.file.UPaths
-import java.text.SimpleDateFormat
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.util.*
 
 /**
@@ -161,10 +162,11 @@ private fun findLastModified(fi: FileInfo, root: Element) {
     root.addText(Utils.formatRFC1123DateTime(fi.modTime))
 }
 
-private val rfc3339format by lazy { SimpleDateFormat("yyyy-MM-dd'T'h:m:ssZ") }
+private val zoneGMT by lazy { ZoneId.of("GMT") }
 
 private fun findCreationDate(fi: FileInfo, root: Element) {
-    root.addText(rfc3339format.format(Date(fi.creationTime)))
+    // rfc3339
+    root.addText(LocalDateTime.ofInstant(Date(fi.creationTime).toInstant(), zoneGMT).toString() + 'Z')
 }
 
 private fun findContentType(fi: FileInfo, root: Element) {
