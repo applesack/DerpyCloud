@@ -2,6 +2,7 @@ package xyz.scootaloo.server.service.webdav
 
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.ext.web.RoutingContext
+import io.vertx.kotlin.config.configChangeOf
 import io.vertx.kotlin.core.file.openOptionsOf
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitBlocking
@@ -120,6 +121,22 @@ object WebDAV {
 
         response.end(DAVHelper.writeLockInfo(token, lockDetails))
         return HttpResponseStatus.OK
+    }
+
+    fun unlock(ctx: RoutingContext): HttpResponseStatus {
+        var token = ctx.request().getHeader("Lock-Token")
+        if (token == null || token.length <= 2 || token[0] != '<' || token.last() != '>') {
+            return HttpResponseStatus.BAD_REQUEST
+        }
+        token = token.substring(1, token.length - 1)
+        val ls = Contexts.getOrCreate(ctx).lock
+        return when (ls.unlock(token)) {
+            Errors.None -> HttpResponseStatus.NO_CONTENT
+            Errors.Forbidden -> HttpResponseStatus.FORBIDDEN
+            Errors.Locked -> HttpResponseStatus.LOCKED
+            Errors.NoSuchLock -> HttpResponseStatus.CONFLICT
+            else -> HttpResponseStatus.INTERNAL_SERVER_ERROR
+        }
     }
 
     fun get(ctx: RoutingContext) {
@@ -272,7 +289,7 @@ object WebDAV {
         }
         var timeoutStr = text
         val i = timeoutStr.lastIndexOf(',')
-        if (i>=0) {
+        if (i >= 0) {
             timeoutStr = timeoutStr.substring(0, i)
         }
         timeoutStr = timeoutStr.trim()

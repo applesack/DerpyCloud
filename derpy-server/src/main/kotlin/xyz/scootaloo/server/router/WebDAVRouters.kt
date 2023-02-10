@@ -35,11 +35,11 @@ object WebDAVRouters {
         }
 
         router.route(HttpMethod.OPTIONS, "/*").handler {
-            it.coroutineHandleFail { WebDAV.options(it) }
+            it.coroutineSafeCall { WebDAV.options(it) }
         }
 
         router.route(HttpMethod.PROPFIND, "/*").handler {
-            it.coroutineHandleFail { WebDAV.propfind(it) }
+            it.coroutineSafeCall { WebDAV.propfind(it) }
         }
 
         router.route(HttpMethod.PROPPATCH, "/*").handler {
@@ -63,11 +63,11 @@ object WebDAVRouters {
         }
 
         router.route(HttpMethod.LOCK, "/*").handler {
-
+            it.coroutineSafeCall { WebDAV.lock(it) }
         }
 
         router.route(HttpMethod.UNLOCK, "/*").handler {
-
+            it.coroutineSafeCall { WebDAV.unlock(it) }
         }
 
         router.route(HttpMethod.GET, "/*").handler {
@@ -79,7 +79,7 @@ object WebDAVRouters {
 
     private val serverInternalError = HttpResponseStatus.INTERNAL_SERVER_ERROR
 
-    private fun RoutingContext.coroutineHandleFail(
+    private fun RoutingContext.coroutineSafeCall(
         block: suspend CoroutineScope.() -> HttpResponseStatus
     ) {
         val ctx = this
