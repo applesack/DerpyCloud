@@ -38,6 +38,10 @@ object WebDAVRouters {
             it.end()
         }
 
+        router.route(HttpMethod.MKCOL, "/*").handler {
+            it.coroutineSafeCall { WebDAV.handleMkCol(it) }
+        }
+
         router.route(HttpMethod.PUT, "/*").handler {
             it.coroutineSafeCall { WebDAV.handlePut(it) }
         }

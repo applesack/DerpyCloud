@@ -1,6 +1,7 @@
 package xyz.scootaloo.derpycloud.service.webdav
 
 import io.netty.handler.codec.http.HttpResponseStatus
+import io.vertx.core.file.FileSystemException
 import io.vertx.ext.web.RoutingContext
 import io.vertx.kotlin.core.file.openOptionsOf
 import io.vertx.kotlin.coroutines.await
@@ -11,6 +12,7 @@ import xyz.scootaloo.derpycloud.middleware.Middlewares
 import xyz.scootaloo.derpycloud.service.file.FileInfo
 import xyz.scootaloo.derpycloud.service.file.UFiles
 import xyz.scootaloo.derpycloud.service.file.UPaths
+import java.nio.file.NoSuchFileException
 
 /**
  * @author AppleSack
@@ -180,8 +182,38 @@ object WebDAV {
         return ctx.terminate(status)
     }
 
-    fun handleMkCol(ctx: RoutingContext): HttpResponseStatus {
-        TODO()
+    suspend fun handleMkCol(ctx: RoutingContext) {
+        val reqPath = ctx.pathParam("*")
+        var (release, status) = confirmLocks(ctx, reqPath, "")
+        if (status != 0) {
+            return ctx.terminate(status)
+        }
+
+        status = HttpResponseStatus.INTERNAL_SERVER_ERROR.code()
+        val safe = runCatching {
+            val contentLength = ctx.request().getHeader("Content-Length") ?: ""
+            if (contentLength.isNotEmpty() && contentLength.toInt() > 0) {
+                status = HttpResponseStatus.UNSUPPORTED_MEDIA_TYPE.code()
+                throw RuntimeException("ignore")
+            }
+            val storage = Contexts.getStorage(ctx)
+            UFiles.makeDir(storage, reqPath)
+        }
+
+        release()
+
+        if (safe.isFailure) {
+            val ex = safe.exceptionOrNull()!!
+            if (ex.message != "ignore") {
+                log.error("webdav mkcol error", ex)
+            }
+            if (ex is FileSystemException && ex.cause is NoSuchFileException) {
+                return ctx.terminate(HttpResponseStatus.CONFLICT)
+            }
+            return ctx.terminate(status)
+        }
+
+        ctx.terminate(HttpResponseStatus.CREATED)
     }
 
     suspend fun handlePropfind(ctx: RoutingContext) {

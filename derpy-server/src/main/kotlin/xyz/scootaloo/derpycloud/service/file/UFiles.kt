@@ -50,6 +50,12 @@ object UFiles {
         return fs.open(realPath, options).await()
     }
 
+    suspend fun makeDir(storage: StorageSpace, path: String) {
+        val fs = Contexts.vertx.fileSystem()
+        val realPath = UPaths.realPath(storage, path)
+        fs.mkdir(realPath).await()
+    }
+
     suspend fun walkFS(
         storage: StorageSpace, fs: FileSystem,
         info: FileInfo, depth: Int, name: String,
