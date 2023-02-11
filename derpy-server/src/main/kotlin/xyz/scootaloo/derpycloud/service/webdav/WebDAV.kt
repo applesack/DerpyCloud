@@ -39,16 +39,16 @@ object WebDAV {
         return HttpResponseStatus.OK
     }
 
-    suspend fun handleLock(ctx: RoutingContext): HttpResponseStatus {
+    suspend fun handleLock(ctx: RoutingContext) {
         val timeoutHeader = ctx.request().getHeader("Timeout")
         val (valid, duration) = parseTimeout(timeoutHeader ?: "")
         if (!valid) {
             log.warn("错误的参数lock.timeout: {}", timeoutHeader)
-            return HttpResponseStatus.BAD_REQUEST
+            return ctx.terminate(HttpResponseStatus.BAD_REQUEST)
         }
         val (code, lockInfo) = DAVHelper.readLockInfo(ctx.body().asString() ?: "")
         if (code != 0) {
-            return HttpResponseStatus.valueOf(code)
+            return ctx.terminate(code)
         }
 
         var token = ""
@@ -61,33 +61,34 @@ object WebDAV {
             // 空的锁结构代表使用当前token刷新一个锁
             val (success, ifHeader) = parseIfHeader(ctx.request().getHeader("If") ?: "")
             if (!success) {
-                return HttpResponseStatus.BAD_REQUEST
+                return ctx.terminate(HttpResponseStatus.BAD_REQUEST)
             }
             if (ifHeader.lists.size == 1 && ifHeader.lists[0].conditions.size == 1) {
                 token = ifHeader.lists[0].conditions[0].token
             }
             val (ld, err) = ls.refresh(token, duration)
             if (err != Errors.None) {
+                var errStatus = HttpResponseStatus.INTERNAL_SERVER_ERROR
                 if (err == Errors.NoSuchLock) {
-                    return HttpResponseStatus.PRECONDITION_FAILED
+                    errStatus = HttpResponseStatus.PRECONDITION_FAILED
                 }
-                return HttpResponseStatus.INTERNAL_SERVER_ERROR
+                return ctx.terminate(errStatus)
             }
             lockDetails = ld
         } else {
             // 创建锁
             val depth = parseDepth(ctx.request().getHeader("Depth") ?: "")
             if (depth != 0 && depth != infiniteDepth) {
-                return HttpResponseStatus.BAD_REQUEST
+                return ctx.terminate(HttpResponseStatus.BAD_REQUEST)
             }
             val reqPath = UPaths.slashClean(ctx.pathParam("*"))
             lockDetails = LockDetails(reqPath, duration, lockInfo.owner, depth == 0)
             val r = ls.create(lockDetails)
             if (r.second != Errors.None) {
                 if (r.second == Errors.Locked) {
-                    return HttpResponseStatus.LOCKED
+                    return ctx.terminate(HttpResponseStatus.LOCKED)
                 }
-                return HttpResponseStatus.INTERNAL_SERVER_ERROR
+                return ctx.terminate(HttpResponseStatus.INTERNAL_SERVER_ERROR)
             }
             token = r.first
             val safe = runCatching {
@@ -97,39 +98,38 @@ object WebDAV {
             }
             if (safe.isFailure) {
                 ls.unlock(token)
-                return HttpResponseStatus.BAD_REQUEST
+                return ctx.terminate(HttpResponseStatus.INTERNAL_SERVER_ERROR)
             }
             created = true
             response.putHeader("Lock-Token", "<$token>")
         }
 
-        response.putHeader("Content-Type", "application/xml; charset=utf-8")
         if (created) {
             response.statusCode = HttpResponseStatus.CREATED.code()
         }
 
+        response.putHeader("Content-Type", "application/xml; charset=utf-8")
         response.end(DAVHelper.writeLockInfo(token, lockDetails))
-        return HttpResponseStatus.OK
     }
 
-    fun handleUnlock(ctx: RoutingContext): HttpResponseStatus {
+    fun handleUnlock(ctx: RoutingContext) {
         var token = ctx.request().getHeader("Lock-Token")
+        val status: HttpResponseStatus
         if (token == null || token.length <= 2 || token[0] != '<' || token.last() != '>') {
-            return HttpResponseStatus.BAD_REQUEST
-        }
-        token = token.substring(1, token.length - 1)
-        val ls = Contexts.get(ctx).lockSystem
-        return when (ls.unlock(token)) {
-            Errors.None -> {
-                ctx.response().statusCode = HttpResponseStatus.NO_CONTENT.code()
-                HttpResponseStatus.OK
+            status = HttpResponseStatus.BAD_REQUEST
+        } else {
+            token = token.substring(1, token.length - 1)
+            val ls = Contexts.get(ctx).lockSystem
+            status = when (ls.unlock(token)) {
+                Errors.None -> HttpResponseStatus.OK
+                Errors.Forbidden -> HttpResponseStatus.FORBIDDEN
+                Errors.Locked -> HttpResponseStatus.LOCKED
+                Errors.NoSuchLock -> HttpResponseStatus.CONFLICT
+                else -> HttpResponseStatus.INTERNAL_SERVER_ERROR
             }
-
-            Errors.Forbidden -> HttpResponseStatus.FORBIDDEN
-            Errors.Locked -> HttpResponseStatus.LOCKED
-            Errors.NoSuchLock -> HttpResponseStatus.CONFLICT
-            else -> HttpResponseStatus.INTERNAL_SERVER_ERROR
         }
+
+        ctx.terminate(status)
     }
 
     fun handleGet(ctx: RoutingContext) {
@@ -137,11 +137,11 @@ object WebDAV {
         storage.staticResources.handle(ctx)
     }
 
-    suspend fun handlePut(ctx: RoutingContext): HttpResponseStatus {
+    suspend fun handlePut(ctx: RoutingContext) {
         val reqPath = ctx.pathParam("*")
         val (release, code) = confirmLocks(ctx, reqPath, "")
         if (code != 0) {
-            return HttpResponseStatus.valueOf(code)
+            return ctx.terminate(code)
         }
 
         var status = HttpResponseStatus.OK
@@ -174,20 +174,22 @@ object WebDAV {
 
         if (safe.isFailure) {
             log.error("webdav put error", safe.exceptionOrNull())
-            ctx.response().statusCode = HttpResponseStatus.INTERNAL_SERVER_ERROR.code()
-            return HttpResponseStatus.INTERNAL_SERVER_ERROR
+            return ctx.terminate(HttpResponseStatus.INTERNAL_SERVER_ERROR)
         }
 
-        ctx.response().statusCode = status.code()
-        return status
+        return ctx.terminate(status)
     }
 
-    suspend fun handlePropfind(ctx: RoutingContext): HttpResponseStatus {
+    fun handleMkCol(ctx: RoutingContext): HttpResponseStatus {
+        TODO()
+    }
+
+    suspend fun handlePropfind(ctx: RoutingContext) {
         val reqPath = UPaths.slashClean(ctx.pathParam("*"))
         val storage = Contexts.getStorage(ctx)
         val (exists, fi) = UFiles.isPathExists(storage, reqPath)
         if (!exists) {
-            return HttpResponseStatus.NOT_FOUND
+            return ctx.terminate(HttpResponseStatus.NOT_FOUND)
         }
         var depth = infiniteDepth
         val depthHeader = ctx.request().getHeader("Depth") ?: ""
@@ -196,7 +198,7 @@ object WebDAV {
         }
         val (success, pf) = awaitBlocking { DAVHelper.readPropfind(ctx.body().asString() ?: "") }
         if (!success) {
-            return HttpResponseStatus.BAD_REQUEST
+            return ctx.terminate(HttpResponseStatus.BAD_REQUEST)
         }
 
         val render = MultiStatusRender()
@@ -222,15 +224,14 @@ object WebDAV {
             return Errors.None
         }
 
-        val fs = Contexts.vertx.fileSystem()
+        val fs = Middlewares.vertx.fileSystem()
         val walkErr = UFiles.walkFS(storage, fs, fi, depth, reqPath, walkFun)
         if (walkErr != Errors.None) {
-            return HttpResponseStatus.INTERNAL_SERVER_ERROR
+            return ctx.terminate(HttpResponseStatus.INTERNAL_SERVER_ERROR)
         }
         ctx.response().putHeader("Content-Type", "text/xml; charset=utf-8")
         ctx.response().statusCode = HttpResponseStatus.MULTI_STATUS.code()
         ctx.end(render.buildXML())
-        return HttpResponseStatus.OK
     }
 
     private fun allProp(fi: FileInfo, include: List<XName>): MutableList<PropStat> {
@@ -381,9 +382,19 @@ object WebDAV {
         }
         val timeout = intResult.getOrElse { defTimeoutSeconds }
         if (timeout < 0 || timeout > maxTimeoutSeconds) {
-            return false to 0
+            return true to maxTimeoutSeconds
         }
         return true to timeout
+    }
+
+    private fun RoutingContext.terminate(status: HttpResponseStatus) {
+        response().statusCode = status.code()
+        end()
+    }
+
+    private fun RoutingContext.terminate(status: Int) {
+        response().statusCode = status
+        end()
     }
 
 }

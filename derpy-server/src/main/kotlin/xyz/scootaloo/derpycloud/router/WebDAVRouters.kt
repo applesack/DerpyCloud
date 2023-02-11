@@ -25,15 +25,6 @@ object WebDAVRouters {
     private fun davRouter(): Router {
         val router = Router.router(Middlewares.vertx)
 
-        router.route("/*").failureHandler {
-            if (!it.response().ended()) {
-                it.response().statusCode = it.statusCode()
-                it.end(HttpResponseStatus.valueOf(it.statusCode()).reasonPhrase())
-            }
-            val fail = it.failure() ?: return@failureHandler
-            log.error("webdav error", fail)
-        }
-
         router.route(HttpMethod.OPTIONS, "/*").handler {
             it.coroutineSafeCall { WebDAV.handleOptions(it) }
         }
@@ -78,24 +69,18 @@ object WebDAVRouters {
         return router
     }
 
-    private val serverInternalError = HttpResponseStatus.INTERNAL_SERVER_ERROR
-
     private fun RoutingContext.coroutineSafeCall(
-        block: suspend CoroutineScope.() -> HttpResponseStatus
+        block: suspend CoroutineScope.() -> Unit
     ) {
         val ctx = this
         Middlewares.coroutine.launch {
-            val result = runCatching { block() }
-            if (result.isFailure) {
-                return@launch ctx.fail(serverInternalError.code())
-            }
-
-            val rCode = result.getOrThrow().code()
-            if (rCode >= 300) {
-                return@launch ctx.fail(rCode)
-            }
-            if (!ctx.response().ended()) {
-                ctx.end()
+            val safe = runCatching { block() }
+            if (safe.isFailure) {
+                log.error("webdav error", safe.exceptionOrNull())
+                if (!ctx.response().ended()) {
+                    ctx.response().statusCode = HttpResponseStatus.INTERNAL_SERVER_ERROR.code()
+                    ctx.end()
+                }
             }
         }
     }
