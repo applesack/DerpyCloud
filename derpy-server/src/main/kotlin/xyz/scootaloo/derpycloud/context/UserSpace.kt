@@ -8,6 +8,6 @@ import xyz.scootaloo.derpycloud.service.webdav.LockSystem
  */
 class UserSpace(
     val storageSpace: StorageSpace,
-    val lock: LockSystem
+    val lockSystem: LockSystem
 ) {
 }

@@ -347,6 +347,6 @@ private class MemLockSystem(
 
     private fun currentTime(currentTimeMillis: Long, increment: Long? = null): Long {
         increment ?: return currentTimeMillis * 100
-        return (System.currentTimeMillis() + increment) * 100
+        return (currentTimeMillis + increment) * 100
     }
 }

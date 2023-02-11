@@ -3,6 +3,7 @@ package xyz.scootaloo.derpycloud.middleware
 import io.vertx.core.Vertx
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
+import io.vertx.ext.web.handler.BodyHandler
 import kotlinx.coroutines.CoroutineScope
 
 /**
@@ -22,6 +23,7 @@ object Middlewares {
         this.coroutine = coroutine
 
         root.route().handler(ResponseRecordHandler)
+        root.route().handler(UploadResourceHandler)
         root.route().handler(CorsHandler)
         root.route().handler(DigestAuthHandler)
         root.route().handler(JwtAuthHandler)

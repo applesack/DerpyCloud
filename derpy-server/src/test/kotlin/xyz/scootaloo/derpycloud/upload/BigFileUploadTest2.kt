@@ -46,6 +46,8 @@ class BigFileUploadTest2 : CoroutineVerticle() {
 //                .setHandleFileUploads(true)
 //                .setBodyLimit(-1))
             put("/*").handler {
+                // 在异步操作之前, 暂停请求, 在处理处理请求体时, 恢复请求
+                it.request().pause()
                 launch {
                     handleFileUpload(it)
                 }
@@ -55,6 +57,7 @@ class BigFileUploadTest2 : CoroutineVerticle() {
 
     private suspend fun handleFileUpload(ctx: RoutingContext) {
         val dest = desktopAsyncFile(ctx.pathParam("*"))
+        ctx.request().resume()
         ctx.request().pipeTo(dest).await()
         ctx.end("ok")
     }

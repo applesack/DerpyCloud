@@ -27,7 +27,7 @@ object ResponseRecordHandler : Handler<RoutingContext> {
         val reqUri = ctx.request().uri()
         val reqMethod = ctx.request().method()
         val status = ctx.response().statusCode
-        log.info("| %s | %6s | %15s | %8s | \"%s\""
+        log.info("| %s | %6s | %15s | %-8s | \"%s\""
             .format(status, duration(ctx), reqRmtAdr, reqMethod, reqUri))
     }
 

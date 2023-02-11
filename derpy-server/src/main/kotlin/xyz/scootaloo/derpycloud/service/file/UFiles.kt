@@ -1,8 +1,11 @@
 package xyz.scootaloo.derpycloud.service.file
 
 import io.vertx.core.CompositeFuture
+import io.vertx.core.file.AsyncFile
 import io.vertx.core.file.FileProps
 import io.vertx.core.file.FileSystem
+import io.vertx.core.file.OpenOptions
+import io.vertx.kotlin.core.file.openOptionsOf
 import io.vertx.kotlin.coroutines.await
 import xyz.scootaloo.derpycloud.context.Contexts
 import xyz.scootaloo.derpycloud.context.StorageSpace
@@ -25,6 +28,26 @@ object UFiles {
             return false to FileInfo.NONE
         }
         return true to getFileInfoFromFileSystem(storage, fs, realPath)
+    }
+
+    suspend fun isParentPathExists(storage: StorageSpace, path: String): Boolean {
+        val sepIdx = path.lastIndexOf('/')
+        val parent = if (sepIdx < 0) {
+            "/"
+        } else {
+            path.substring(0, sepIdx)
+        }
+        return isPathExists(storage, UPaths.clean(parent)).first
+    }
+
+    fun findETag(fi: FileInfo): String {
+        return String.format("\"%x%x\"", fi.modTime, fi.size)
+    }
+
+    suspend fun open(storage: StorageSpace, path: String, options: OpenOptions): AsyncFile {
+        val fs = Contexts.vertx.fileSystem()
+        val realPath = UPaths.realPath(storage, path)
+        return fs.open(realPath, options).await()
     }
 
     suspend fun walkFS(

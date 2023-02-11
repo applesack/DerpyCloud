@@ -35,19 +35,20 @@ object WebDAVRouters {
         }
 
         router.route(HttpMethod.OPTIONS, "/*").handler {
-            it.coroutineSafeCall { WebDAV.options(it) }
+            it.coroutineSafeCall { WebDAV.handleOptions(it) }
         }
 
         router.route(HttpMethod.PROPFIND, "/*").handler {
-            it.coroutineSafeCall { WebDAV.propfind(it) }
+            it.coroutineSafeCall { WebDAV.handlePropfind(it) }
         }
 
         router.route(HttpMethod.PROPPATCH, "/*").handler {
-
+            it.response().statusCode = HttpResponseStatus.METHOD_NOT_ALLOWED.code()
+            it.end()
         }
 
         router.route(HttpMethod.PUT, "/*").handler {
-            WebDAV.put(it)
+            it.coroutineSafeCall { WebDAV.handlePut(it) }
         }
 
         router.route(HttpMethod.COPY, "/*").handler {
@@ -63,15 +64,15 @@ object WebDAVRouters {
         }
 
         router.route(HttpMethod.LOCK, "/*").handler {
-            it.coroutineSafeCall { WebDAV.lock(it) }
+            it.coroutineSafeCall { WebDAV.handleLock(it) }
         }
 
         router.route(HttpMethod.UNLOCK, "/*").handler {
-            it.coroutineSafeCall { WebDAV.unlock(it) }
+            it.coroutineSafeCall { WebDAV.handleUnlock(it) }
         }
 
         router.route(HttpMethod.GET, "/*").handler {
-            WebDAV.get(it)
+            WebDAV.handleGet(it)
         }
 
         return router

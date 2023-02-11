@@ -5,14 +5,12 @@ import io.vertx.ext.web.RoutingContext
 import io.vertx.kotlin.core.file.openOptionsOf
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitBlocking
-import kotlinx.coroutines.launch
 import org.slf4j.LoggerFactory
 import xyz.scootaloo.derpycloud.context.Contexts
 import xyz.scootaloo.derpycloud.middleware.Middlewares
 import xyz.scootaloo.derpycloud.service.file.FileInfo
 import xyz.scootaloo.derpycloud.service.file.UFiles
 import xyz.scootaloo.derpycloud.service.file.UPaths
-import java.io.File
 
 /**
  * @author AppleSack
@@ -31,7 +29,7 @@ object WebDAV {
     private const val defOptionsAllow = "OPTIONS, PROPFIND, GET, HEAD, PUT, " +
             "DELETE, COPY, MOVE, MKCOL, LOCK, UNLOCK, POST"
 
-    fun options(ctx: RoutingContext): HttpResponseStatus {
+    fun handleOptions(ctx: RoutingContext): HttpResponseStatus {
         val respHeader = ctx.response().headers()
         respHeader.add("Allow", defOptionsAllow)
         respHeader.add("DAV", "1,2")
@@ -41,7 +39,7 @@ object WebDAV {
         return HttpResponseStatus.OK
     }
 
-    suspend fun lock(ctx: RoutingContext): HttpResponseStatus {
+    suspend fun handleLock(ctx: RoutingContext): HttpResponseStatus {
         val timeoutHeader = ctx.request().getHeader("Timeout")
         val (valid, duration) = parseTimeout(timeoutHeader ?: "")
         if (!valid) {
@@ -57,11 +55,11 @@ object WebDAV {
         val lockDetails: LockDetails
         var created = false
         val us = Contexts.get(ctx)
-        val ls = us.lock
+        val ls = us.lockSystem
         val response = ctx.response()
         if (lockInfo == LockInfo.NONE) {
             // 空的锁结构代表使用当前token刷新一个锁
-            val (success, ifHeader) = parseIfHeader(ctx.body().asString() ?: "")
+            val (success, ifHeader) = parseIfHeader(ctx.request().getHeader("If") ?: "")
             if (!success) {
                 return HttpResponseStatus.BAD_REQUEST
             }
@@ -114,13 +112,13 @@ object WebDAV {
         return HttpResponseStatus.OK
     }
 
-    fun unlock(ctx: RoutingContext): HttpResponseStatus {
+    fun handleUnlock(ctx: RoutingContext): HttpResponseStatus {
         var token = ctx.request().getHeader("Lock-Token")
         if (token == null || token.length <= 2 || token[0] != '<' || token.last() != '>') {
             return HttpResponseStatus.BAD_REQUEST
         }
         token = token.substring(1, token.length - 1)
-        val ls = Contexts.get(ctx).lock
+        val ls = Contexts.get(ctx).lockSystem
         return when (ls.unlock(token)) {
             Errors.None -> {
                 ctx.response().statusCode = HttpResponseStatus.NO_CONTENT.code()
@@ -134,28 +132,57 @@ object WebDAV {
         }
     }
 
-    fun get(ctx: RoutingContext) {
+    fun handleGet(ctx: RoutingContext) {
         val storage = Contexts.getStorage(ctx)
         storage.staticResources.handle(ctx)
     }
 
-    fun put(ctx: RoutingContext) {
-        Middlewares.coroutine.launch {
-            // todo 待实现
-            val fs = Middlewares.vertx.fileSystem()
-            val homeDir = "derpy"
-            if (!fs.exists(homeDir).await()) {
-                fs.mkdirs(homeDir).await()
+    suspend fun handlePut(ctx: RoutingContext): HttpResponseStatus {
+        val reqPath = ctx.pathParam("*")
+        val (release, code) = confirmLocks(ctx, reqPath, "")
+        if (code != 0) {
+            return HttpResponseStatus.valueOf(code)
+        }
+
+        var status = HttpResponseStatus.OK
+        val safe = runCatching {
+            val storage = Contexts.get(ctx).storageSpace
+            if (!UFiles.isParentPathExists(storage, reqPath)) {
+                status = HttpResponseStatus.CONFLICT
+                throw RuntimeException()
             }
 
-            val destPath = homeDir + File.separator + ctx.pathParam("*")
-            val destFile = fs.open(destPath, openOptionsOf()).await()
-            ctx.request().pipeTo(destFile).await()
-            ctx.end("ok")
+            val exists = UFiles.isPathExists(storage, reqPath).first
+            if (exists) {
+                status = HttpResponseStatus.CREATED
+            }
+
+            val options = openOptionsOf(
+                create = true, write = true, read = true, truncateExisting = true
+//                , perms = "rw-rw-rw-" // windows环境不支持使用posix的api来设定访问属性
+            )
+            val file = UFiles.open(storage, reqPath, options)
+            ctx.request().resume()
+            ctx.request().pipeTo(file).await()
+            val (has, fileInfo) = UFiles.isPathExists(storage, reqPath)
+            if (has) {
+                ctx.response().putHeader("ETag", UFiles.findETag(fileInfo))
+            }
         }
+
+        release()
+
+        if (safe.isFailure) {
+            log.error("webdav put error", safe.exceptionOrNull())
+            ctx.response().statusCode = HttpResponseStatus.INTERNAL_SERVER_ERROR.code()
+            return HttpResponseStatus.INTERNAL_SERVER_ERROR
+        }
+
+        ctx.response().statusCode = status.code()
+        return status
     }
 
-    suspend fun propfind(ctx: RoutingContext): HttpResponseStatus {
+    suspend fun handlePropfind(ctx: RoutingContext): HttpResponseStatus {
         val reqPath = UPaths.slashClean(ctx.pathParam("*"))
         val storage = Contexts.getStorage(ctx)
         val (exists, fi) = UFiles.isPathExists(storage, reqPath)
@@ -262,6 +289,53 @@ object WebDAV {
 
     private fun makePropStatResponse(href: String, pStats: List<PropStat>): MultiResponse {
         return MultiResponse(href, pStats)
+    }
+
+    private fun confirmLocks(ctx: RoutingContext, src: String, dst: String): Pair<() -> Unit, Int> {
+        val ifHeader = ctx.request().getHeader("If") ?: ""
+        var srcToken = ""
+        var dstToken = ""
+        if (ifHeader == "") {
+            if (src != "") {
+                val call = lock(ctx, src)
+                if (call.second != 0) {
+                    return {} to call.second
+                }
+                srcToken = call.first
+            }
+            if (dst != "") {
+                val call = lock(ctx, dst)
+                if (call.second != 0) {
+                    if (srcToken != "") {
+                        Contexts.get(ctx).lockSystem.unlock(srcToken)
+                    }
+                    return {} to call.second
+                }
+                dstToken = call.first
+            }
+        }
+
+        return {
+            val lockSystem = Contexts.get(ctx).lockSystem
+            if (srcToken != "") {
+                lockSystem.unlock(srcToken)
+            }
+            if (dstToken != "") {
+                lockSystem.unlock(dstToken)
+            }
+        } to 0
+    }
+
+    private fun lock(ctx: RoutingContext, root: String): Pair<String, Int> {
+        val ls = Contexts.get(ctx).lockSystem
+        val (token, error) = ls.create(LockDetails(root, infiniteTimeoutSeconds, zeroDepth = true))
+        if (error != Errors.None) {
+            if (error == Errors.Locked) {
+                return "" to HttpResponseStatus.LOCKED.code()
+            }
+            return "" to HttpResponseStatus.INTERNAL_SERVER_ERROR.code()
+        }
+        return token to 0
     }
 
     private const val infiniteDepth = -1

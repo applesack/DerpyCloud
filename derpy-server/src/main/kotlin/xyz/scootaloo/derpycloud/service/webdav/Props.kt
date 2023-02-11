@@ -9,6 +9,7 @@ import org.dom4j.Element
 import org.dom4j.Namespace
 import org.dom4j.QName
 import xyz.scootaloo.derpycloud.service.file.FileInfo
+import xyz.scootaloo.derpycloud.service.file.UFiles
 import xyz.scootaloo.derpycloud.service.file.UPaths
 import java.text.SimpleDateFormat
 import java.util.*
@@ -188,7 +189,7 @@ private fun findContentType(fi: FileInfo, root: Element) {
 }
 
 private fun findETag(fi: FileInfo, root: Element) {
-    root.addText(String.format("\"%x%x\"", fi.modTime, fi.size))
+    root.addText(UFiles.findETag(fi))
 }
 
 private fun findSupportedLock(root: Element) {
