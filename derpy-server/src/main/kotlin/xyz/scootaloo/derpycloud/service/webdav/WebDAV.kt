@@ -81,31 +81,39 @@ object WebDAV {
             lockDetails = ld
         } else {
             // 创建锁
-            val depth = parseDepth(ctx.request().getHeader("Depth") ?: "")
+            var depth = parseDepth(ctx.request().getHeader("Depth") ?: "")
             if (depth != 0 && depth != infiniteDepth) {
-                return ctx.terminate(HttpResponseStatus.BAD_REQUEST)
+                // 在ms资源管理器下调用某些方法之前, 会提交没有Depth信息的Lock请求 (如Copy)
+                // 为了保证这些操作能够继续进行, 将锁深度默认值设为0
+                depth = 0
             }
             val reqPath = UPaths.slashClean(ctx.pathParam("*"))
             lockDetails = LockDetails(reqPath, duration, lockInfo.owner, depth == 0)
-            val r = ls.create(lockDetails)
-            if (r.second != Errors.None) {
-                if (r.second == Errors.Locked) {
+            val lockCall = ls.create(lockDetails)
+            if (lockCall.second != Errors.None) {
+                if (lockCall.second == Errors.Locked) {
                     return ctx.terminate(HttpResponseStatus.LOCKED)
                 }
                 return ctx.terminate(HttpResponseStatus.INTERNAL_SERVER_ERROR)
             }
-            token = r.first
+            token = lockCall.first
             val safe = runCatching {
+                // 只有文件不存在时才尝试创建文件, 如果成功状态码201, 否则状态码200
                 val fs = Middlewares.vertx.fileSystem()
-                val file = fs.open(UPaths.realPath(us.storageSpace, reqPath), openOptionsOf(create = true)).await()
+                val realReqPath = UPaths.realPath(us.storageSpace, reqPath)
+                if (fs.exists(realReqPath).await()) {
+                    return@runCatching
+                }
+
+                val file = fs.open(realReqPath, openOptionsOf(create = true)).await()
                 file.close().await()
+                created = true
             }
             if (safe.isFailure) {
                 ls.unlock(token)
                 return ctx.terminate(HttpResponseStatus.INTERNAL_SERVER_ERROR)
             }
-            created = true
-            response.putHeader("Lock-Token", "<$token>")
+            response.putHeader("Lock-Token", token)
         }
 
         if (created) {
@@ -490,7 +498,7 @@ object WebDAV {
                 'y' -> return infiniteDepth
             }
         }
-        return 1
+        return invalidDepth
     }
 
     private const val defTimeoutSeconds = 5L

@@ -318,21 +318,21 @@ private class MemLockSystem(
 
     private fun collectExpiryLocks(currentTimeMillis: Long) {
         val currentVirtualTime = currentTime(currentTimeMillis)
-        val expiryKeys = LinkedList<Long>()
-        for ((time, _) in expiryQueue) {
+        val expiryNodes = LinkedList<MemLSNode>()
+        for ((time, node) in expiryQueue) {
             if (time > currentVirtualTime) {
                 break
             }
-            expiryKeys.add(time)
+            expiryNodes.add(node)
         }
-        for (key in expiryKeys) {
-            expiryQueue.remove(key)
+        for (node in expiryNodes) {
+            remove(node)
         }
     }
 
     private fun nextToken(): String {
         gen++
-        return gen.toString()
+        return "opaquelocktoken:${UUID.randomUUID()}"
     }
 
     private fun newExpireKey(currentTimeMillis: Long, duration: Long): Long {
