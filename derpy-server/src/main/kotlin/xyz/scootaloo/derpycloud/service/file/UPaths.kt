@@ -1,11 +1,13 @@
 package xyz.scootaloo.derpycloud.service.file
 
 import io.vertx.core.http.impl.HttpUtils
+import io.vertx.core.net.impl.URIDecoder
 import xyz.scootaloo.derpycloud.context.StorageSpace
 import xyz.scootaloo.derpycloud.service.webdav.WebDAV
 import java.net.URLEncoder
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.regex.Pattern
 import kotlin.io.path.absolutePathString
 
 /**
@@ -26,8 +28,8 @@ object UPaths {
         return HttpUtils.removeDots(path)
     }
 
-    fun relative(base: Path, cur: Path): String {
-        return base.relativize(cur).toString()
+    fun relative(storage: StorageSpace, cur: Path): String {
+        return normalize(storage.realPrefixPath.relativize(cur).toString())
     }
 
     fun normalize(path: String): String {
@@ -72,6 +74,10 @@ object UPaths {
             .replace("+", "%20")
     }
 
+    fun decodeUri(path: String): String {
+        return slashClean(URIDecoder.decodeURIComponent(path))
+    }
+
     fun join(vararg names: String): String {
         var size = 0
         for (name in names) {
@@ -96,6 +102,26 @@ object UPaths {
             return "/"
         }
         return clean(path)
+    }
+
+    private val regx: Pattern by lazy {
+        Pattern.compile("((\\w+)://([^/:]+)(:\\d*)?)")
+    }
+
+    // suffix, ok
+    @Deprecated("unused")
+    fun pureUrlSuffix(url: String): Pair<String, Boolean> {
+        val matcher = regx.matcher(url)
+        if (!matcher.find()) {
+            return slashClean(URIDecoder.decodeURIComponent(url)) to true
+        }
+
+        val matched = runCatching { matcher.group(0) }
+        if (matched.isFailure) {
+            return "" to false
+        }
+        val urlPrefix = matched.getOrThrow()
+        return slashClean(url.substring(urlPrefix.length)) to true
     }
 
 }

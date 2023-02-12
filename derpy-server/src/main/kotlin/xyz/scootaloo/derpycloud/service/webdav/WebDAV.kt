@@ -1,7 +1,8 @@
 package xyz.scootaloo.derpycloud.service.webdav
 
 import io.netty.handler.codec.http.HttpResponseStatus
-import io.vertx.core.file.FileSystemException
+import io.vertx.core.http.HttpMethod
+import io.vertx.core.http.HttpServerRequest
 import io.vertx.ext.web.RoutingContext
 import io.vertx.kotlin.core.file.openOptionsOf
 import io.vertx.kotlin.coroutines.await
@@ -12,7 +13,8 @@ import xyz.scootaloo.derpycloud.middleware.Middlewares
 import xyz.scootaloo.derpycloud.service.file.FileInfo
 import xyz.scootaloo.derpycloud.service.file.UFiles
 import xyz.scootaloo.derpycloud.service.file.UPaths
-import java.nio.file.NoSuchFileException
+import xyz.scootaloo.derpycloud.service.utils.Defer
+import java.net.URL
 
 /**
  * @author AppleSack
@@ -139,11 +141,12 @@ object WebDAV {
         storage.staticResources.handle(ctx)
     }
 
-    suspend fun handlePut(ctx: RoutingContext) {
+    suspend fun handlePut(ctx: RoutingContext) = Defer.run {
         val reqPath = ctx.pathParam("*")
         val (release, code) = confirmLocks(ctx, reqPath, "")
+        defer { release() }
         if (code != 0) {
-            return ctx.terminate(code)
+            return@run ctx.terminate(code)
         }
 
         var status = HttpResponseStatus.OK
@@ -164,6 +167,10 @@ object WebDAV {
 //                , perms = "rw-rw-rw-" // windows环境不支持使用posix的api来设定访问属性
             )
             val file = UFiles.open(storage, reqPath, options)
+            defer {
+                // todo ctx.end() 调用时会自动关闭在之前打开的文件?
+                file.close().await()
+            }
             ctx.request().resume()
             ctx.request().pipeTo(file).await()
             val (has, fileInfo) = UFiles.isPathExists(storage, reqPath)
@@ -172,21 +179,20 @@ object WebDAV {
             }
         }
 
-        release()
-
         if (safe.isFailure) {
             log.error("webdav put error", safe.exceptionOrNull())
-            return ctx.terminate(HttpResponseStatus.INTERNAL_SERVER_ERROR)
+            return@run ctx.terminate(HttpResponseStatus.INTERNAL_SERVER_ERROR)
         }
 
-        return ctx.terminate(status)
+        return@run ctx.terminate(status)
     }
 
-    suspend fun handleMkCol(ctx: RoutingContext) {
+    suspend fun handleMkCol(ctx: RoutingContext) = Defer.run {
         val reqPath = ctx.pathParam("*")
         var (release, status) = confirmLocks(ctx, reqPath, "")
+        defer { release() }
         if (status != 0) {
-            return ctx.terminate(status)
+            return@run ctx.terminate(status)
         }
 
         status = HttpResponseStatus.INTERNAL_SERVER_ERROR.code()
@@ -200,20 +206,105 @@ object WebDAV {
             UFiles.makeDir(storage, reqPath)
         }
 
-        release()
-
         if (safe.isFailure) {
             val ex = safe.exceptionOrNull()!!
             if (ex.message != "ignore") {
                 log.error("webdav mkcol error", ex)
             }
-            if (ex is FileSystemException && ex.cause is NoSuchFileException) {
-                return ctx.terminate(HttpResponseStatus.CONFLICT)
+            if (UFiles.isFileNotExists(safe)) {
+                return@run ctx.terminate(HttpResponseStatus.CONFLICT)
             }
-            return ctx.terminate(status)
+            return@run ctx.terminate(status)
         }
 
         ctx.terminate(HttpResponseStatus.CREATED)
+    }
+
+    suspend fun handleCopyMove(ctx: RoutingContext) {
+        val destHeader = ctx.request().getHeader("Destination") ?: ""
+        if (destHeader == "") {
+            return ctx.terminate(HttpResponseStatus.BAD_REQUEST)
+        }
+        val urlParseCall = runCatching { URL(destHeader) }
+        if (urlParseCall.isFailure) {
+            return ctx.terminate(HttpResponseStatus.BAD_REQUEST)
+        }
+        val url = urlParseCall.getOrThrow()
+        if (!isSameHost(url, ctx.request())) {
+            return ctx.terminate(HttpResponseStatus.BAD_GATEWAY)
+        }
+
+        val src = ctx.pathParam("*")
+        val dst = UPaths.decodeUri(url.path ?: "")
+
+        if (dst == "") {
+            return ctx.terminate(HttpResponseStatus.BAD_GATEWAY)
+        }
+        if (dst == src) {
+            return ctx.terminate(HttpResponseStatus.FORBIDDEN)
+        }
+
+        val storage = Contexts.getStorage(ctx)
+        if (ctx.request().method() == HttpMethod.COPY) {
+            // 处理 Copy 请求
+            return Defer.run {
+                val (release, status) = confirmLocks(ctx, "", dst)
+                defer { release() }
+
+                if (status != 0) {
+                    return@run ctx.terminate(status)
+                }
+
+                var depth = infiniteDepth
+                val depthHeader = ctx.request().getHeader("Depth") ?: ""
+                if (depthHeader != "") {
+                    depth = parseDepth(depthHeader)
+                    if (depth != 0 && depth != infiniteDepth) {
+                        return@run ctx.terminate(HttpResponseStatus.BAD_REQUEST)
+                    }
+                }
+                val overwrite = ctx.request().getHeader("Overwrite") != "F"
+                val safeCall = runCatching {
+                    UFiles.copyFiles(storage, src, dst, overwrite, depth, 0)
+                }
+
+                if (safeCall.isFailure) {
+                    if (UFiles.isFileNotExists(safeCall)) {
+                        return@run ctx.terminate(HttpResponseStatus.NOT_FOUND)
+                    }
+                    log.error("webdav copy error", safeCall.exceptionOrNull())
+                    return@run ctx.terminate(HttpResponseStatus.FORBIDDEN)
+                }
+                return@run ctx.terminate(safeCall.getOrThrow())
+            }
+
+        }
+
+        // 处理 Move 请求
+
+        return Defer.run {
+            val (release, status) = confirmLocks(ctx, src, dst)
+            defer { release() }
+            if (status != 0) {
+                return@run ctx.terminate(status)
+            }
+
+            val depthHeader = ctx.request().getHeader("Depth") ?: ""
+            if (depthHeader != "" && parseDepth(depthHeader) != infiniteDepth) {
+                return@run ctx.terminate(HttpResponseStatus.BAD_REQUEST)
+            }
+
+            val overwrite = ctx.request().getHeader("Overwrite") == "T"
+            val safeCall = runCatching { UFiles.moveFiles(storage, src, dst, overwrite) }
+            if (safeCall.isFailure) {
+                if (UFiles.isFileNotExists(safeCall)) {
+                    return@run ctx.terminate(HttpResponseStatus.NOT_FOUND)
+                }
+                log.error("webdav move error", safeCall.exceptionOrNull())
+                return@run ctx.terminate(HttpResponseStatus.FORBIDDEN)
+            }
+            return@run ctx.terminate(safeCall.getOrThrow())
+        }
     }
 
     suspend fun handlePropfind(ctx: RoutingContext) {
@@ -419,9 +510,13 @@ object WebDAV {
         return true to timeout
     }
 
+    private fun isSameHost(url: URL, request: HttpServerRequest): Boolean {
+        // todo 比较 url.host 和 request.host, 内网环境和公网环境可能不同
+        return true
+    }
+
     private fun RoutingContext.terminate(status: HttpResponseStatus) {
-        response().statusCode = status.code()
-        end()
+        terminate(status.code())
     }
 
     private fun RoutingContext.terminate(status: Int) {

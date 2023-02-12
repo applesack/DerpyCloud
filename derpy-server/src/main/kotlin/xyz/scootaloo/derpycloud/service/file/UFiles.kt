@@ -1,15 +1,16 @@
 package xyz.scootaloo.derpycloud.service.file
 
+import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.CompositeFuture
-import io.vertx.core.file.AsyncFile
-import io.vertx.core.file.FileProps
-import io.vertx.core.file.FileSystem
-import io.vertx.core.file.OpenOptions
+import io.vertx.core.file.*
+import io.vertx.kotlin.core.file.copyOptionsOf
 import io.vertx.kotlin.core.file.openOptionsOf
 import io.vertx.kotlin.coroutines.await
 import xyz.scootaloo.derpycloud.context.Contexts
 import xyz.scootaloo.derpycloud.context.StorageSpace
+import xyz.scootaloo.derpycloud.service.utils.Defer
 import xyz.scootaloo.derpycloud.service.webdav.Errors
+import java.nio.file.NoSuchFileException
 import java.nio.file.Paths
 
 /**
@@ -44,6 +45,11 @@ object UFiles {
         return String.format("\"%x%x\"", fi.modTime, fi.size)
     }
 
+    fun isFileNotExists(call: Result<Any>): Boolean {
+        val ex = call.exceptionOrNull() ?: return false
+        return ex is FileSystemException && ex.cause is NoSuchFileException
+    }
+
     suspend fun open(storage: StorageSpace, path: String, options: OpenOptions): AsyncFile {
         val fs = Contexts.vertx.fileSystem()
         val realPath = UPaths.realPath(storage, path)
@@ -54,6 +60,103 @@ object UFiles {
         val fs = Contexts.vertx.fileSystem()
         val realPath = UPaths.realPath(storage, path)
         fs.mkdir(realPath).await()
+    }
+
+    /**
+     * 可能会抛出异常, 如果抛出[NoSuchFileException], 返回404, 其他异常返回403.
+     * 如果没有抛出异常, 可以直接将方法返回的状态码作为响应的状态码.
+     */
+    suspend fun copyFiles(
+        storage: StorageSpace, src: String, dst: String,
+        overwrite: Boolean, depth: Int, recursion: Int
+    ): HttpResponseStatus = Defer.run {
+        if (recursion == 1000) { // 默认递归深度1000以内
+            return@run HttpResponseStatus.INTERNAL_SERVER_ERROR
+        }
+        val recursionCp = recursion + 1
+        val fs = Contexts.vertx.fileSystem()
+
+        val srcRealPath = UPaths.realPath(storage, src)
+        val srcFile = fs.open(srcRealPath, openOptionsOf(read = true)).await()
+        defer { srcFile.close().await() }
+
+        var created = false
+        val dstRealPath = UPaths.realPath(storage, dst)
+        if (!fs.exists(dstRealPath).await()) {
+            created = true
+        } else {
+            // 文件存在
+            if (!overwrite) {
+                return@run HttpResponseStatus.PRECONDITION_FAILED
+            }
+            fs.deleteRecursive(dstRealPath, true).await()
+        }
+
+        val srcFileProps = fs.props(srcRealPath).await()
+        if (srcFileProps.isDirectory) {
+            // 如果是文件夹
+            fs.mkdir(dstRealPath).await()
+            // 如果深度无限, 则继续向下递归
+            if (depth == -1) {
+                val children = fs.readDir(srcRealPath).await()
+                for (child in children) {
+                    val filename = UPaths.filenameOf(child)
+                    val childSrc = UPaths.join(src, filename)
+                    val childDst = UPaths.join(dst, filename)
+                    return@run copyFiles(storage, childSrc, childDst, overwrite, depth, recursionCp)
+                }
+            }
+        } else {
+            // 如果是文件
+            val openOptions = openOptionsOf(write = true, create = true, truncateExisting = true)
+            val safeOpen = runCatching { fs.open(dstRealPath, openOptions).await() }
+            if (safeOpen.isFailure) {
+                return@run HttpResponseStatus.PRECONDITION_FAILED
+            }
+            val dstFile = safeOpen.getOrThrow()
+            defer { dstFile.close().await() }
+            val copyOptions = copyOptionsOf(
+//                copyAttributes = true, // 非 posix 环境不支持这个api
+                replaceExisting = overwrite
+            )
+            fs.copy(srcRealPath, dstRealPath, copyOptions).await()
+        }
+
+        if (created) {
+            return@run HttpResponseStatus.CREATED
+        }
+        HttpResponseStatus.NO_CONTENT
+    }
+
+    /**
+     * 处理方式与[copyFiles]相同
+     */
+    suspend fun moveFiles(
+        storage: StorageSpace, src: String, dst: String, overwrite: Boolean
+    ): HttpResponseStatus = Defer.run {
+        var created = false
+        val dstRealPath = UPaths.realPath(storage, dst)
+        val fs = Contexts.vertx.fileSystem()
+        if (!fs.exists(dstRealPath).await()) {
+            created = true
+        } else if (overwrite) {
+            fs.deleteRecursive(dstRealPath, true).await()
+        } else {
+            // 以不重写的方式将文件移动到一个已存在的位置
+            return@run HttpResponseStatus.PRECONDITION_FAILED
+        }
+
+        val srcRealPath = UPaths.realPath(storage, src)
+        val copyOptions = copyOptionsOf(
+//            copyAttributes = true, // 非 posix 环境不支持这个api
+            replaceExisting = true
+        )
+        fs.move(srcRealPath, dstRealPath, copyOptions).await()
+
+        if (created) {
+            return@run HttpResponseStatus.CREATED
+        }
+        HttpResponseStatus.NO_CONTENT
     }
 
     suspend fun walkFS(
@@ -98,12 +201,12 @@ object UFiles {
         }
 
         val realPath = UPaths.realPath(storage, fi.path)
-        val fResult = runCatching { fs.readDir(realPath).await() }
-        if (fResult.isFailure) {
+        val readDirCall = runCatching { fs.readDir(realPath).await() }
+        if (readDirCall.isFailure) {
             return emptyList()
         }
 
-        return getMultiFileInfoFromFileSystem(storage, fs, fResult.getOrThrow())
+        return getMultiFileInfoFromFileSystem(storage, fs, readDirCall.getOrThrow())
     }
 
     private suspend fun getMultiFileInfoFromFileSystem(
@@ -123,7 +226,7 @@ object UFiles {
     }
 
     private fun buildFileInfo(storage: StorageSpace, realPath: String, props: FileProps): FileInfo {
-        val path = UPaths.normalize(UPaths.relative(storage.realPrefixPath, Paths.get(realPath)))
+        val path = UPaths.relative(storage, Paths.get(realPath))
         val filename = UPaths.filenameOf(path)
         return FileInfo(
             props.size(), filename, path, props.lastModifiedTime(),

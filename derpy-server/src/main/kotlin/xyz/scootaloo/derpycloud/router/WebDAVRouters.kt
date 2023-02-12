@@ -47,11 +47,11 @@ object WebDAVRouters {
         }
 
         router.route(HttpMethod.COPY, "/*").handler {
-
+            it.coroutineSafeCall { WebDAV.handleCopyMove(it) }
         }
 
         router.route(HttpMethod.MOVE, "/*").handler {
-
+            it.coroutineSafeCall { WebDAV.handleCopyMove(it) }
         }
 
         router.route(HttpMethod.DELETE, "/*").handler {
