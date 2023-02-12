@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<D:multistatus xmlns:D="DAV:" xmlns:ns0="urn:uuid:69b75486-79f2-4004-a782-080766841efd/"
+               xmlns:ns1="urn:schemas-microsoft-com:">
+    <D:response>
+        <D:href>/%E4%BD%A0%E5%A5%BDhello%20world</D:href>
+        <D:propstat>
+            <D:prop>
+                <D:creationdate ns0:dt="datetime.tz">2023-02-11T21:41:14Z</D:creationdate>
+                <D:getcontenttype>httpd/unix-directory</D:getcontenttype>
+                <D:getlastmodified ns0:dt="dateTime.rfc1123">Sun, 12 Feb 2023 05:21:50 GMT</D:getlastmodified>
+                <D:getcontentlength>0</D:getcontentlength>
+                <D:resourcetype>
+                    <D:collection/>
+                </D:resourcetype>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+    <D:response>
+        <D:href>/%E4%BD%A0%E5%A5%BDhello%20world/5656.txt</D:href>
+        <D:propstat>
+            <D:prop>
+                <D:creationdate ns0:dt="datetime.tz">2023-02-12T13:21:50Z</D:creationdate>
+                <D:getcontenttype>text/plain</D:getcontenttype>
+                <D:getlastmodified ns0:dt="dateTime.rfc1123">Sun, 12 Feb 2023 05:21:50 GMT</D:getlastmodified>
+                <D:getetag>"1864412875b0"</D:getetag>
+                <D:displayname>5656.txt</D:displayname>
+                <D:getcontentlength>0</D:getcontentlength>
+                <D:resourcetype/>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+    <D:response>
+        <D:href>/%E4%BD%A0%E5%A5%BDhello%20world/abc</D:href>
+        <D:propstat>
+            <D:prop>
+                <D:creationdate ns0:dt="datetime.tz">2023-02-11T21:42:54Z</D:creationdate>
+                <D:getcontenttype>httpd/unix-directory</D:getcontenttype>
+                <D:getlastmodified ns0:dt="dateTime.rfc1123">Sun, 12 Feb 2023 05:41:31 GMT</D:getlastmodified>
+                <D:getcontentlength>0</D:getcontentlength>
+                <D:resourcetype>
+                    <D:collection/>
+                </D:resourcetype>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+    <D:response>
+        <D:href>/%E4%BD%A0%E5%A5%BDhello%20world/abc/5656.txt</D:href>
+        <D:propstat>
+            <D:prop>
+                <D:creationdate ns0:dt="datetime.tz">2023-02-12T13:17:59Z</D:creationdate>
+                <D:getcontenttype>text/plain</D:getcontenttype>
+                <D:getlastmodified ns0:dt="dateTime.rfc1123">Sun, 12 Feb 2023 05:17:59 GMT</D:getlastmodified>
+                <D:getetag>"186440f027e0"</D:getetag>
+                <D:displayname>5656.txt</D:displayname>
+                <D:getcontentlength>0</D:getcontentlength>
+                <D:resourcetype/>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+    <D:response>
+        <D:href>/%E4%BD%A0%E5%A5%BDhello%20world/abc/%E4%BD%A0%E5%A5%BD%E4%B8%96%E7%95%8C.txt</D:href>
+        <D:propstat>
+            <D:prop>
+                <D:creationdate ns0:dt="datetime.tz">2023-02-12T13:41:26Z</D:creationdate>
+                <D:getcontenttype>text/plain</D:getcontenttype>
+                <D:getlastmodified ns0:dt="dateTime.rfc1123">Sun, 12 Feb 2023 05:41:26 GMT</D:getlastmodified>
+                <D:getetag>"18644247a6f0"</D:getetag>
+                <D:displayname>%E4%BD%A0%E5%A5%BD%E4%B8%96%E7%95%8C.txt</D:displayname>
+                <D:getcontentlength>0</D:getcontentlength>
+                <D:resourcetype/>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+    <D:response>
+        <D:href>/%E4%BD%A0%E5%A5%BDhello%20world/%E4%BD%A0%E5%A5%BD%E4%B8%96%E7%95%8C.txt</D:href>
+        <D:propstat>
+            <D:prop>
+                <D:creationdate ns0:dt="datetime.tz">2023-02-11T20:27:49Z</D:creationdate>
+                <D:getcontenttype>text/plain</D:getcontenttype>
+                <D:getlastmodified ns0:dt="dateTime.rfc1123">Sat, 11 Feb 2023 12:28:39 GMT</D:getlastmodified>
+                <D:getetag>"1864072f06727700bd"</D:getetag>
+                <D:displayname>%E4%BD%A0%E5%A5%BD%E4%B8%96%E7%95%8C.txt</D:displayname>
+                <D:getcontentlength>41353405</D:getcontentlength>
+                <D:resourcetype/>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+</D:multistatus>

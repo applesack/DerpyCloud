@@ -142,7 +142,7 @@ object WebDAV {
     }
 
     suspend fun handlePut(ctx: RoutingContext) = Defer.run {
-        val reqPath = ctx.pathParam("*")
+        val reqPath = UPaths.slashClean(ctx.pathParam("*"))
         val (release, code) = confirmLocks(ctx, reqPath, "")
         defer { release() }
         if (code != 0) {
@@ -167,10 +167,6 @@ object WebDAV {
 //                , perms = "rw-rw-rw-" // windows环境不支持使用posix的api来设定访问属性
             )
             val file = UFiles.open(storage, reqPath, options)
-            defer {
-                // todo ctx.end() 调用时会自动关闭在之前打开的文件?
-                file.close().await()
-            }
             ctx.request().resume()
             ctx.request().pipeTo(file).await()
             val (has, fileInfo) = UFiles.isPathExists(storage, reqPath)
@@ -188,12 +184,12 @@ object WebDAV {
     }
 
     suspend fun handleMkCol(ctx: RoutingContext) = Defer.run {
-        val reqPath = ctx.pathParam("*")
+        val reqPath = UPaths.slashClean(ctx.pathParam("*"))
         var (release, status) = confirmLocks(ctx, reqPath, "")
-        defer { release() }
         if (status != 0) {
             return@run ctx.terminate(status)
         }
+        defer { release() }
 
         status = HttpResponseStatus.INTERNAL_SERVER_ERROR.code()
         val safe = runCatching {
@@ -234,7 +230,7 @@ object WebDAV {
             return ctx.terminate(HttpResponseStatus.BAD_GATEWAY)
         }
 
-        val src = ctx.pathParam("*")
+        val src = UPaths.slashClean(ctx.pathParam("*"))
         val dst = UPaths.decodeUri(url.path ?: "")
 
         if (dst == "") {
@@ -249,11 +245,10 @@ object WebDAV {
             // 处理 Copy 请求
             return Defer.run {
                 val (release, status) = confirmLocks(ctx, "", dst)
-                defer { release() }
-
                 if (status != 0) {
                     return@run ctx.terminate(status)
                 }
+                defer { release() }
 
                 var depth = infiniteDepth
                 val depthHeader = ctx.request().getHeader("Depth") ?: ""
@@ -284,10 +279,10 @@ object WebDAV {
 
         return Defer.run {
             val (release, status) = confirmLocks(ctx, src, dst)
-            defer { release() }
             if (status != 0) {
                 return@run ctx.terminate(status)
             }
+            defer { release() }
 
             val depthHeader = ctx.request().getHeader("Depth") ?: ""
             if (depthHeader != "" && parseDepth(depthHeader) != infiniteDepth) {
@@ -305,6 +300,28 @@ object WebDAV {
             }
             return@run ctx.terminate(safeCall.getOrThrow())
         }
+    }
+
+    suspend fun handleDelete(ctx: RoutingContext) = Defer.run {
+        val reqPath = UPaths.slashClean(ctx.pathParam("*"))
+        val (release, status) = confirmLocks(ctx, reqPath, "")
+        if (status != 0) {
+            return@run ctx.terminate(status)
+        }
+        defer { release() }
+
+        val fs = Middlewares.vertx.fileSystem()
+        val storage = Contexts.getStorage(ctx)
+        val reqRealPath = UPaths.realPath(storage, reqPath)
+        val reqRealPathExists = fs.exists(reqRealPath).await()
+        if (!reqRealPathExists) {
+            return@run ctx.terminate(HttpResponseStatus.NOT_FOUND)
+        }
+        val safeDelete = runCatching { fs.deleteRecursive(reqRealPath, true).await() }
+        if (safeDelete.isFailure) {
+            return@run ctx.terminate(HttpResponseStatus.METHOD_NOT_ALLOWED)
+        }
+        ctx.terminate(HttpResponseStatus.NO_CONTENT)
     }
 
     suspend fun handlePropfind(ctx: RoutingContext) {
@@ -466,11 +483,14 @@ object WebDAV {
     private const val invalidDepth = -2
 
     private fun parseDepth(s: String): Int {
-        return when (s) {
-            "0" -> 0
-            "1" -> infiniteDepth
-            else -> invalidDepth
+        for (ch in s) {
+            when (ch) {
+                '0' -> return 0
+                '1' -> return 1
+                'y' -> return infiniteDepth
+            }
         }
+        return 1
     }
 
     private const val defTimeoutSeconds = 5L

@@ -55,7 +55,7 @@ object WebDAVRouters {
         }
 
         router.route(HttpMethod.DELETE, "/*").handler {
-
+            it.coroutineSafeCall { WebDAV.handleDelete(it) }
         }
 
         router.route(HttpMethod.LOCK, "/*").handler {
