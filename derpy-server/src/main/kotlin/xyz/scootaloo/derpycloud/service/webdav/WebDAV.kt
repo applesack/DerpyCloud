@@ -172,7 +172,7 @@ object WebDAV {
             }
 
             val options = openOptionsOf(
-                create = true, write = true, read = true, truncateExisting = true
+                create = true, read = true, write = true, truncateExisting = true
 //                , perms = "rw-rw-rw-" // windows环境不支持使用posix的api来设定访问属性
             )
             val file = UFiles.open(storage, reqPath, options)

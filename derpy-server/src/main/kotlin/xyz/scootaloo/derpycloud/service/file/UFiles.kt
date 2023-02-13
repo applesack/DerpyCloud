@@ -26,7 +26,7 @@ object UFiles {
             "${size.toFloat() / 1024f}Kb"
             "${size / 1024}Kb"
         } else if (size < 1024 * 1024 * 1024) { // Mb
-            "%.2Mb".format(size.toDouble() / (1024f * 1024f))
+            "%.2fMb".format(size.toDouble() / (1024f * 1024f))
         } else { // Gb
             "$.2fGb".format(size.toDouble() / (1024f * 1024f * 1024f))
         }
