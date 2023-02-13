@@ -22,7 +22,7 @@ class DAVHelperTest {
                 </D:prop> 
             </D:propfind>
         """.trimIndent()
-        println(DAVHelper.readPropfind(xml))
+        println(DAVHelper.readPropFind(xml))
     }
 
     @Test
@@ -33,7 +33,7 @@ class DAVHelperTest {
                 <propname/>
             </propfind>
         """.trimIndent()
-        println(DAVHelper.readPropfind(xml))
+        println(DAVHelper.readPropFind(xml))
     }
 
     @Test
@@ -44,7 +44,7 @@ class DAVHelperTest {
                 <D:allprop/>
             </D:propfind>
         """.trimIndent()
-        println(DAVHelper.readPropfind(xml))
+        println(DAVHelper.readPropFind(xml))
     }
 
     @Test
@@ -59,7 +59,7 @@ class DAVHelperTest {
                 </D:include> 
             </D:propfind> 
         """.trimIndent()
-        println(DAVHelper.readPropfind(xml))
+        println(DAVHelper.readPropFind(xml))
     }
 
 }

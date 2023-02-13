@@ -10,7 +10,8 @@ import org.dom4j.Element
  */
 object DAVHelper {
 
-    fun readPropfind(text: String): Pair<Boolean, PropFind> {
+    // todo 将boolean值交换为第二个值
+    fun readPropFind(text: String): Pair<Boolean, PropFind> {
         val pf = PropFind()
         if (text.isBlank()) {
             pf.allProp = true
@@ -68,6 +69,28 @@ object DAVHelper {
         return true to pf
     }
 
+    fun readPropPatch(text: String): Pair<List<PropPatch>, Int> {
+        val safeParse = kotlin.runCatching { DocumentHelper.parseText(text) }
+        if (safeParse.isFailure) {
+            return emptyList<PropPatch>() to HttpResponseStatus.BAD_REQUEST.code()
+        }
+
+        val setPatch = PropPatch(false)
+        val remPatch = PropPatch(true)
+        val root = safeParse.getOrThrow().rootElement
+        for (updateLabel in root.elementIterator()) {
+            if (updateLabel !is Element) {
+                continue
+            }
+            var set = updateLabel.name == "set"
+            val propLabel = updateLabel.element("prop") ?: continue
+
+        }
+
+        TODO()
+    }
+
+    // todo 将 int 值交换为第二个值
     fun readLockInfo(text: String): Pair<Int, LockInfo> {
         if (text.isBlank()) {
             // 刷新锁的请求

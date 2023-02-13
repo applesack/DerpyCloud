@@ -14,6 +14,7 @@ import xyz.scootaloo.derpycloud.service.file.FileInfo
 import xyz.scootaloo.derpycloud.service.file.UFiles
 import xyz.scootaloo.derpycloud.service.file.UPaths
 import xyz.scootaloo.derpycloud.service.utils.Defer
+import xyz.scootaloo.derpycloud.service.utils.DeferRunner
 import java.net.URL
 
 /**
@@ -332,7 +333,7 @@ object WebDAV {
         ctx.terminate(HttpResponseStatus.NO_CONTENT)
     }
 
-    suspend fun handlePropfind(ctx: RoutingContext) {
+    suspend fun handlePropFind(ctx: RoutingContext) {
         val reqPath = UPaths.slashClean(ctx.pathParam("*"))
         val storage = Contexts.getStorage(ctx)
         val (exists, fi) = UFiles.isPathExists(storage, reqPath)
@@ -344,7 +345,7 @@ object WebDAV {
         if (depthHeader.isNotEmpty()) {
             depth = parseDepth(depthHeader)
         }
-        val (success, pf) = awaitBlocking { DAVHelper.readPropfind(ctx.body().asString() ?: "") }
+        val (success, pf) = awaitBlocking { DAVHelper.readPropFind(ctx.body().asString() ?: "") }
         if (!success) {
             return ctx.terminate(HttpResponseStatus.BAD_REQUEST)
         }
@@ -377,6 +378,35 @@ object WebDAV {
         if (walkErr != Errors.None) {
             return ctx.terminate(HttpResponseStatus.INTERNAL_SERVER_ERROR)
         }
+        ctx.response().putHeader("Content-Type", "text/xml; charset=utf-8")
+        ctx.response().statusCode = HttpResponseStatus.MULTI_STATUS.code()
+        ctx.end(render.buildXML())
+    }
+
+    suspend fun handlePropPatch(ctx: RoutingContext) = Defer.run {
+        val reqPath = UPaths.slashClean(ctx.pathParam("*"))
+        val (release, status) = confirmLocks(ctx, reqPath, "")
+        if (status != 0) {
+            return@run ctx.terminate(status)
+        }
+        defer { release() }
+
+        val fs = Middlewares.vertx.fileSystem()
+        val storage = Contexts.getStorage(ctx)
+        if (!fs.exists(UPaths.realPath(storage, reqPath)).await()) {
+            return@run ctx.terminate(HttpResponseStatus.METHOD_NOT_ALLOWED)
+        }
+        val (patchList, err) = DAVHelper.readPropPatch(ctx.body().asString() ?: "")
+        if (err != 0) {
+            return@run ctx.terminate(err)
+        }
+
+        val render = MultiStatusRender()
+        val (pStats, patchCallError) = patch(patchList)
+        if (patchCallError != 0) {
+            return@run ctx.terminate(HttpResponseStatus.METHOD_NOT_ALLOWED)
+        }
+        render.addResp(makePropStatResponse(reqPath, pStats))
         ctx.response().putHeader("Content-Type", "text/xml; charset=utf-8")
         ctx.response().statusCode = HttpResponseStatus.MULTI_STATUS.code()
         ctx.end(render.buildXML())
@@ -438,6 +468,46 @@ object WebDAV {
 
     private fun makePropStatResponse(href: String, pStats: List<PropStat>): MultiResponse {
         return MultiResponse(href, pStats)
+    }
+
+    private fun patch(patchList: List<PropPatch>): Pair<List<PropStat>, Int> {
+        var conflict = false
+        loop@ for (patch in patchList) {
+            for (prop in patch.props) {
+                if (prop.name in Props.liveProps) {
+                    conflict = true
+                    break@loop
+                }
+            }
+        }
+        if (conflict) {
+            val pStatForbidden = PropStat(status = HttpResponseStatus.FORBIDDEN)
+            val pStatFailedDep = PropStat(status = HttpResponseStatus.FAILED_DEPENDENCY)
+            for (patch in patchList) {
+                for (prop in patch.props) {
+                    if (prop.name in Props.liveProps) {
+                        pStatForbidden.props.add(Property(prop.name, FileInfo.NONE, { _, _ -> }))
+                    } else {
+                        pStatFailedDep.props.add(Property(prop.name, FileInfo.NONE, { _, _ -> }))
+                    }
+                }
+            }
+            return makePropStats(pStatForbidden, pStatFailedDep) to 0
+        }
+
+        val pStatOk = PropStat(status = HttpResponseStatus.OK)
+        for (patch in patchList) {
+            for (prop in patch.props) {
+                pStatOk.props.add(Property(prop.name, FileInfo.NONE, { _, _ -> }))
+            }
+        }
+        return listOf(pStatOk) to 0
+    }
+
+    private suspend fun DeferRunner<Unit>.confirmReqPathAndTakeLock(
+        ctx: RoutingContext
+    ) {
+        TODO()
     }
 
     private fun confirmLocks(ctx: RoutingContext, src: String, dst: String): Pair<() -> Unit, Int> {

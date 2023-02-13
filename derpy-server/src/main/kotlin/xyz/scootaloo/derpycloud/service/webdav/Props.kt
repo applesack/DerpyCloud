@@ -13,6 +13,7 @@ import xyz.scootaloo.derpycloud.service.file.UFiles
 import xyz.scootaloo.derpycloud.service.file.UPaths
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.collections.ArrayList
 
 /**
  * @author AppleSack
@@ -25,8 +26,9 @@ data class PropFind(
     val include: MutableList<XName> = ArrayList()
 )
 
-internal class PropPatch(
-    val remove: Boolean
+data class PropPatch(
+    val remove: Boolean,
+    val props: List<Property> = ArrayList()
 )
 
 data class XName(

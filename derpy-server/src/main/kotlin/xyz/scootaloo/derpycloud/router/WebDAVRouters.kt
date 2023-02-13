@@ -30,7 +30,7 @@ object WebDAVRouters {
         }
 
         router.route(HttpMethod.PROPFIND, "/*").handler {
-            it.coroutineSafeCall { WebDAV.handlePropfind(it) }
+            it.coroutineSafeCall { WebDAV.handlePropFind(it) }
         }
 
         router.route(HttpMethod.PROPPATCH, "/*").handler {
