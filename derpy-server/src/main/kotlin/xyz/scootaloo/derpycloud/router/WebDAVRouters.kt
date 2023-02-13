@@ -34,8 +34,7 @@ object WebDAVRouters {
         }
 
         router.route(HttpMethod.PROPPATCH, "/*").handler {
-            it.response().statusCode = HttpResponseStatus.METHOD_NOT_ALLOWED.code()
-            it.end()
+            it.coroutineSafeCall { WebDAV.handlePropPatch(it) }
         }
 
         router.route(HttpMethod.MKCOL, "/*").handler {

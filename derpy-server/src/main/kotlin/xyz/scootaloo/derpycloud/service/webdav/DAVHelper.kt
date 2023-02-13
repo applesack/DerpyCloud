@@ -3,6 +3,7 @@ package xyz.scootaloo.derpycloud.service.webdav
 import io.netty.handler.codec.http.HttpResponseStatus
 import org.dom4j.DocumentHelper
 import org.dom4j.Element
+import xyz.scootaloo.derpycloud.service.file.FileInfo
 
 /**
  * @author AppleSack
@@ -82,12 +83,33 @@ object DAVHelper {
             if (updateLabel !is Element) {
                 continue
             }
-            var set = updateLabel.name == "set"
+            val set = updateLabel.name == "set"
             val propLabel = updateLabel.element("prop") ?: continue
-
+            for (propItem in propLabel.elementIterator()) {
+                if (propItem !is Element) {
+                    continue
+                }
+                val property = Property(
+                    XName(propItem.namespacePrefix, propItem.name), FileInfo.NONE, { _, _ -> })
+                if (set) {
+                    setPatch.props.add(property)
+                } else {
+                    remPatch.props.add(property)
+                }
+            }
         }
 
-        TODO()
+        val propPatchList = ArrayList<PropPatch>()
+        if (remPatch.props.isNotEmpty()) {
+            propPatchList.add(remPatch)
+        }
+        if (setPatch.props.isNotEmpty()) {
+            propPatchList.add(setPatch)
+        }
+        if (propPatchList.isEmpty()) {
+            return emptyList<PropPatch>() to HttpResponseStatus.BAD_REQUEST.code()
+        }
+        return propPatchList to 0
     }
 
     // todo 将 int 值交换为第二个值

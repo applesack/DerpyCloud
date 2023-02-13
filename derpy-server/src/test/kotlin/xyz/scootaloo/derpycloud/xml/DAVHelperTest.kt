@@ -62,4 +62,20 @@ class DAVHelperTest {
         println(DAVHelper.readPropFind(xml))
     }
 
+    @Test
+    fun testPropPatch() {
+        val xml = """
+            <?xml version="1.0" encoding="utf-8" ?>
+            <D:propertyupdate xmlns:D="DAV:" xmlns:Z="urn:schemas-microsoft-com:">
+                <D:set>
+                    <D:prop>
+                        <Z:Win32LastModifiedTime>Sun, 12 Feb 2023 06:49:56 GMT</Z:Win32LastModifiedTime>
+                    </D:prop>
+                </D:set>
+            </D:propertyupdate>
+        """.trimIndent()
+        val (proppatch, code) = DAVHelper.readPropPatch(xml)
+        println("$proppatch, $code")
+    }
+
 }

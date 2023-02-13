@@ -28,7 +28,7 @@ data class PropFind(
 
 data class PropPatch(
     val remove: Boolean,
-    val props: List<Property> = ArrayList()
+    val props: MutableList<Property> = ArrayList()
 )
 
 data class XName(

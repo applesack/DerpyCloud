@@ -181,6 +181,7 @@ object WebDAV {
             val (has, fileInfo) = UFiles.isPathExists(storage, reqPath)
             if (has) {
                 ctx.response().putHeader("ETag", UFiles.findETag(fileInfo))
+                log.info("upload file: $reqPath, filesize: ${UFiles.readableFilesize(fileInfo.size)}")
             }
         }
 
