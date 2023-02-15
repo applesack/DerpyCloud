@@ -10,6 +10,7 @@ import io.vertx.kotlin.coroutines.awaitBlocking
 import org.slf4j.LoggerFactory
 import xyz.scootaloo.derpycloud.context.Contexts
 import xyz.scootaloo.derpycloud.middleware.Middlewares
+import xyz.scootaloo.derpycloud.middleware.UploadResourceHandler
 import xyz.scootaloo.derpycloud.service.file.FileInfo
 import xyz.scootaloo.derpycloud.service.file.UFiles
 import xyz.scootaloo.derpycloud.service.file.UPaths
@@ -159,8 +160,8 @@ object WebDAV {
         }
 
         var status = HttpResponseStatus.OK
+        val storage = Contexts.get(ctx).storageSpace
         val safe = runCatching {
-            val storage = Contexts.get(ctx).storageSpace
             if (!UFiles.isParentPathExists(storage, reqPath)) {
                 status = HttpResponseStatus.CONFLICT
                 throw RuntimeException()
@@ -175,9 +176,19 @@ object WebDAV {
                 create = true, read = true, write = true, truncateExisting = true
 //                , perms = "rw-rw-rw-" // windows环境不支持使用posix的api来设定访问属性
             )
+            val contentLength = (ctx.request().getHeader("Content-Length") ?: "0").toLong()
             val file = UFiles.open(storage, reqPath, options)
-            ctx.request().resume()
-            ctx.request().pipeTo(file).await()
+            if (contentLength > UploadResourceHandler.bigFileSize) {
+                ctx.request().pipeTo(file).await()
+            } else {
+                val buff = ctx.body().buffer()
+                if (buff != null) {
+                    file.write(buff, 0).await()
+                    file.close().await()
+                }
+            }
+
+            // 写入完成后, 检查文件是否存在; 如果存在, 将文件的etag信息写入到响应头
             val (has, fileInfo) = UFiles.isPathExists(storage, reqPath)
             if (has) {
                 ctx.response().putHeader("ETag", UFiles.findETag(fileInfo))
@@ -187,6 +198,7 @@ object WebDAV {
 
         if (safe.isFailure) {
             log.error("webdav put error", safe.exceptionOrNull())
+            UFiles.deleteFile(storage, reqPath)
             return@run ctx.terminate(HttpResponseStatus.INTERNAL_SERVER_ERROR)
         }
 

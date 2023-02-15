@@ -32,6 +32,15 @@ object UFiles {
         }
     }
 
+    suspend fun deleteFile(storage: StorageSpace, path: String, checkExists: Boolean = true) {
+        val fs = Contexts.vertx.fileSystem()
+        val realPath = UPaths.realPath(storage, path)
+        if (checkExists && !fs.exists(realPath).await()) {
+            return
+        }
+        fs.delete(realPath).await()
+    }
+
     /**
      * 检查一个路径是否存在, 如果存在, 返回文件描述, 否则返回空
      */
