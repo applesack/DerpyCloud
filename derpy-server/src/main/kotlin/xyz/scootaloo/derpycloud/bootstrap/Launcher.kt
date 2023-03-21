@@ -20,7 +20,7 @@ object Launcher {
         }
 
         val vertx = Vertx.vertx()
-        vertx.deployVerticle(MainVerticle)
+        vertx.deployVerticle(MainVerticle())
     }
 
     private fun report(err: Throwable) {

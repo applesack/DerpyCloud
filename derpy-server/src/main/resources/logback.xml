@@ -2,6 +2,7 @@
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%red(%date{yyyy-MM-dd HH:mm:ss}) %highlight(%-5level) %cyan(%msg%n)</pattern>
+            <charset>utf-8</charset>
         </encoder>
     </appender>
 

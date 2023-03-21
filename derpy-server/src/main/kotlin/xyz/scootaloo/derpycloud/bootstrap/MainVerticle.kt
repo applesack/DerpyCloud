@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory
  * @author AppleSack
  * @since 2023/01/30
  */
-object MainVerticle : CoroutineVerticle() {
+class MainVerticle : CoroutineVerticle() {
 
     private val log = LoggerFactory.getLogger("main")
 
